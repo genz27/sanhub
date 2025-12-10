@@ -727,61 +727,6 @@ export default function VideoGenerationPage() {
                       placeholder="描述你想要生成的内容，越详细效果越好..."
                       className="w-full h-20 px-3 py-2.5 bg-white/5 border border-white/10 text-white rounded-lg resize-none focus:outline-none focus:border-white/30 placeholder:text-white/30 text-sm"
                     />
-                    {/* 角色卡库弹窗 */}
-                    {showCharacterLibrary && (
-                      <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-zinc-900 border border-white/10 rounded-lg shadow-xl overflow-hidden">
-                        <div className="p-3 border-b border-white/10 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <User className="w-4 h-4 text-pink-400" />
-                            <span className="text-sm font-medium text-white">角色卡库</span>
-                          </div>
-                          <button
-                            onClick={() => setShowCharacterLibrary(false)}
-                            className="text-white/40 hover:text-white transition-colors"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <div className="max-h-80 overflow-y-auto p-2">
-                          {characterCards.length > 0 ? (
-                            <div className="grid grid-cols-1 gap-2">
-                              {characterCards.map((card) => (
-                                <button
-                                  key={card.id}
-                                  type="button"
-                                  onClick={() => {
-                                    const mention = `@${card.characterName}`;
-                                    setPrompt(prev => prev ? `${prev} ${mention}` : mention);
-                                    setShowCharacterLibrary(false);
-                                  }}
-                                  className="w-full flex items-center gap-3 px-3 py-2.5 bg-white/5 hover:bg-white/10 rounded-lg transition-all text-left border border-white/10 hover:border-pink-500/30"
-                                >
-                                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-gradient-to-br from-pink-500/20 to-purple-500/20 shrink-0">
-                                    {card.avatarUrl ? (
-                                      <img src={card.avatarUrl} alt="" className="w-full h-full object-cover" />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center">
-                                        <User className="w-6 h-6 text-pink-400/50" />
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-white truncate">
-                                      @{card.characterName}
-                                    </p>
-                                    <p className="text-xs text-white/40">点击添加到描述</p>
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="px-3 py-8 text-center text-white/40 text-sm">
-                              暂无角色卡
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
                     {/* 角色卡选择器 */}
                     {showCharacterPicker && creationMode === 'normal' && (
                       <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-zinc-900 border border-white/10 rounded-lg shadow-xl max-h-60 overflow-hidden">
@@ -1015,6 +960,73 @@ export default function VideoGenerationPage() {
           />
         </div>
       </div>
+
+      {/* 角色卡库弹窗 Modal */}
+      {showCharacterLibrary && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-4 sm:px-6 py-4 border-b border-white/10 bg-gradient-to-r from-pink-500/10 to-purple-500/10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-500/20 to-purple-500/20 flex items-center justify-center">
+                    <User className="w-4 h-4 text-pink-400" />
+                  </div>
+                  <h3 className="text-base sm:text-lg font-semibold text-white">角色卡库</h3>
+                </div>
+                <button
+                  onClick={() => setShowCharacterLibrary(false)}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="max-h-[60vh] sm:max-h-96 overflow-y-auto p-3 sm:p-4">
+              {characterCards.length > 0 ? (
+                <div className="grid grid-cols-1 gap-2.5">
+                  {characterCards.map((card) => (
+                    <button
+                      key={card.id}
+                      type="button"
+                      onClick={() => {
+                        const mention = `@${card.characterName}`;
+                        setPrompt(prev => prev ? `${prev} ${mention}` : mention);
+                        setShowCharacterLibrary(false);
+                      }}
+                      className="w-full flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3 sm:py-3.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-left border border-white/10 hover:border-pink-500/30 active:scale-[0.98]"
+                    >
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-gradient-to-br from-pink-500/20 to-purple-500/20 shrink-0">
+                        {card.avatarUrl ? (
+                          <img src={card.avatarUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <User className="w-7 h-7 sm:w-8 sm:h-8 text-pink-400/50" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm sm:text-base font-medium text-white truncate">
+                          @{card.characterName}
+                        </p>
+                        <p className="text-xs sm:text-sm text-white/40 mt-0.5">点击添加到描述</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="px-4 py-12 text-center">
+                  <User className="w-12 h-12 mx-auto text-white/20 mb-3" />
+                  <p className="text-white/40 text-sm">暂无角色卡</p>
+                  <p className="text-white/30 text-xs mt-1">前往角色卡生成页面创建</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
