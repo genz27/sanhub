@@ -15,6 +15,13 @@ node_modules/
 /build/
 /dist/
 /ViMax-main/
+
+# ===================
+# Docs
+# ===================
+CHANGELOG.md
+API_README.md
+OPENAI_API.md
 # ===================
 # Testing
 # ===================

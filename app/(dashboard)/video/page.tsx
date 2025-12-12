@@ -129,34 +129,12 @@ export default function VideoGenerationPage() {
     loadCharacterCards();
   }, []);
 
-  // 处理 @ 输入检测
+  // 处理提示词输入
   const handlePromptChange = (
     e: React.ChangeEvent<HTMLTextAreaElement>,
     setter: (value: string) => void
   ) => {
-    const value = e.target.value;
-    const cursorPos = e.target.selectionStart;
-    setter(value);
-
-    // 检测是否刚输入了 @
-    const textBeforeCursor = value.slice(0, cursorPos);
-    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
-    
-    if (lastAtIndex !== -1) {
-      const textAfterAt = textBeforeCursor.slice(lastAtIndex + 1);
-      // 检查 @ 后面是否有空格或其他特殊字符（如果有就不显示选择器）
-      if (!/\s/.test(textAfterAt) && characterCards.length > 0) {
-        // 获取 @ 后的搜索词
-        setAtSearchQuery(textAfterAt.toLowerCase());
-        setAtCursorPosition(lastAtIndex);
-        setShowCharacterPicker(true);
-        return;
-      }
-    }
-    
-    setShowCharacterPicker(false);
-    setAtSearchQuery('');
-    setAtCursorPosition(null);
+    setter(e.target.value);
   };
 
   // 选择角色卡
@@ -814,57 +792,6 @@ export default function VideoGenerationPage() {
                       placeholder="描述你想要生成的内容，越详细效果越好..."
                       className="w-full h-20 px-3 py-2.5 bg-white/5 border border-white/10 text-white rounded-lg resize-none focus:outline-none focus:border-white/30 placeholder:text-white/30 text-sm"
                     />
-                    {/* 角色卡选择器 */}
-                    {showCharacterPicker && creationMode === 'normal' && (
-                      <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-zinc-900 border border-white/10 rounded-lg shadow-xl max-h-60 overflow-hidden">
-                        <div className="p-2 border-b border-white/10 space-y-2">
-                          <p className="text-[10px] text-white/40 uppercase tracking-wider flex items-center justify-between">
-                            <span>选择角色卡</span>
-                            {atSearchQuery && (
-                              <span className="text-[10px] text-pink-400/70">@{atSearchQuery}</span>
-                            )}
-                          </p>
-                          <input
-                            autoFocus
-                            value={atSearchQuery}
-                            onChange={(e) => setAtSearchQuery(e.target.value.toLowerCase())}
-                            placeholder="搜索角色名..."
-                            className="w-full px-2.5 py-1.5 bg-black/40 border border-white/10 rounded text-[11px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
-                          />
-                        </div>
-                        <div className="max-h-40 overflow-y-auto">
-                          {filteredCharacterCards.length > 0 ? (
-                            filteredCharacterCards.map((card) => (
-                              <button
-                                key={card.id}
-                                type="button"
-                                onClick={() => selectCharacterCard(card, promptTextareaRef, prompt, setPrompt)}
-                                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/10 transition-colors text-left"
-                              >
-                                <div className="w-8 h-8 rounded-lg overflow-hidden bg-gradient-to-br from-pink-500/20 to-purple-500/20 shrink-0">
-                                  {card.avatarUrl ? (
-                                    <img src={card.avatarUrl} alt="" className="w-full h-full object-cover" />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                      <User className="w-4 h-4 text-pink-400/50" />
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm text-white truncate">
-                                    @{card.characterName}
-                                  </p>
-                                </div>
-                              </button>
-                            ))
-                          ) : (
-                            <div className="px-3 py-4 text-center text-white/40 text-xs">
-                              没有匹配的角色卡，请输入更多字符搜索
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </>
               )}
@@ -890,9 +817,6 @@ export default function VideoGenerationPage() {
                   <div className="space-y-2 relative">
                     <label className="text-xs text-white/50 uppercase tracking-wider flex items-center gap-2">
                       修改描述
-                      {characterCards.length > 0 && (
-                        <span className="text-[10px] text-pink-400/60">输入 @ 选择角色卡</span>
-                      )}
                     </label>
                     <textarea
                       ref={remixPromptRef}
@@ -901,57 +825,6 @@ export default function VideoGenerationPage() {
                       placeholder="描述你想要的修改，如：改成水墨画风格"
                       className="w-full h-20 px-3 py-2.5 bg-white/5 border border-white/10 text-white rounded-lg resize-none focus:outline-none focus:border-white/30 placeholder:text-white/30 text-sm"
                     />
-                    {/* 角色卡选择器 */}
-                    {showCharacterPicker && creationMode === 'remix' && (
-                      <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-zinc-900 border border-white/10 rounded-lg shadow-xl max-h-60 overflow-hidden">
-                        <div className="p-2 border-b border-white/10 space-y-2">
-                          <p className="text-[10px] text-white/40 uppercase tracking-wider flex items-center justify-between">
-                            <span>选择角色卡</span>
-                            {atSearchQuery && (
-                              <span className="text-[10px] text-pink-400/70">@{atSearchQuery}</span>
-                            )}
-                          </p>
-                          <input
-                            autoFocus
-                            value={atSearchQuery}
-                            onChange={(e) => setAtSearchQuery(e.target.value.toLowerCase())}
-                            placeholder="搜索角色名..."
-                            className="w-full px-2.5 py-1.5 bg-black/40 border border-white/10 rounded text-[11px] text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
-                          />
-                        </div>
-                        <div className="max-h-40 overflow-y-auto">
-                          {filteredCharacterCards.length > 0 ? (
-                            filteredCharacterCards.map((card) => (
-                              <button
-                                key={card.id}
-                                type="button"
-                                onClick={() => selectCharacterCard(card, remixPromptRef, prompt, setPrompt)}
-                                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/10 transition-colors text-left"
-                              >
-                                <div className="w-8 h-8 rounded-lg overflow-hidden bg-gradient-to-br from-pink-500/20 to-purple-500/20 shrink-0">
-                                  {card.avatarUrl ? (
-                                    <img src={card.avatarUrl} alt="" className="w-full h-full object-cover" />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                      <User className="w-4 h-4 text-pink-400/50" />
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm text-white truncate">
-                                    @{card.characterName}
-                                  </p>
-                                </div>
-                              </button>
-                            ))
-                          ) : (
-                            <div className="px-3 py-4 text-center text-white/40 text-xs">
-                              没有匹配的角色卡，请输入更多字符搜索
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </>
               )}
