@@ -234,6 +234,33 @@ export default function UserProfilePage() {
     setSelectedVideo(item);
   }, []);
 
+  const handleDownload = useCallback(async () => {
+    if (!selectedVideo?.attachment?.downloadable_url) return;
+
+    const url = selectedVideo.attachment.downloadable_url;
+    const pathname = url.split('?')[0];
+    const ext = pathname.includes('.') ? pathname.split('.').pop() || '' : '';
+    const fallbackExt = selectedVideo.attachment.kind?.includes('video') ? 'mp4' : 'png';
+    const filename = `sanhub-${selectedVideo.id}.${ext || fallbackExt}`;
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Download failed');
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error('Download failed', err);
+    }
+  }, [selectedVideo]);
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Back Button */}
@@ -376,16 +403,14 @@ export default function UserProfilePage() {
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <a
-                  href={selectedVideo.attachment.downloadable_url}
-                  download
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  onClick={handleDownload}
                   className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
                   title="下载视频"
                 >
                   <Download className="w-5 h-5 text-white" />
-                </a>
+                </button>
                 <button
                   onClick={() => setSelectedVideo(null)}
                   className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
