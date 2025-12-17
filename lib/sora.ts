@@ -79,13 +79,17 @@ export async function generateWithSora(
     throw new Error('视频生成失败：未返回有效的视频 URL');
   }
 
+  const first = result.data[0];
+
   const { type, cost } = getTypeAndCost(request.model, config.pricing);
 
   console.log('[Sora] 生成成功:', { type, url: result.data[0].url, cost });
 
   return {
     type,
-    url: result.data[0].url,
+    url: first.url,
     cost,
+    permalink: typeof first.permalink === 'string' ? first.permalink : undefined,
+    revised_prompt: typeof first.revised_prompt === 'string' ? first.revised_prompt : undefined,
   };
 }

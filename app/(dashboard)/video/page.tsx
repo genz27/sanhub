@@ -52,7 +52,7 @@ export default function VideoGenerationPage() {
   const [aspectRatio, setAspectRatio] = useState<string>('landscape');
   const [duration, setDuration] = useState<string>('10s');
   const [prompt, setPrompt] = useState('');
-  const [files, setFiles] = useState<{ data: string; mimeType: string; preview: string }[]>([]);
+  const [files, setFiles] = useState<Array<{ data: string; mimeType: string; preview: string }>>([]);
 
   // 视频风格选择 (仅普通模式可用)
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
@@ -63,6 +63,9 @@ export default function VideoGenerationPage() {
     { id: 'selfie', name: 'Selfie', image: '/styles/Selfie.jpg' },
     { id: 'handheld', name: 'Handheld', image: '/styles/Handheld.jpg' },
     { id: 'anime', name: 'Anime', image: '/styles/Anime.jpg' },
+    { id: 'comic', name: 'Comic', image: '/styles/Comic.jpg' },
+    { id: 'golden', name: 'Golden', image: '/styles/Golden.jpg' },
+    { id: 'vintage', name: 'Vintage', image: '/styles/Vintage.jpg' },
   ];
 
   // Remix 模式
@@ -754,7 +757,7 @@ export default function VideoGenerationPage() {
                         </div>
                       ) : (
                         <div className="grid grid-cols-4 gap-2">
-                          {files.map((f, i) => (
+                          {files.map((f: { data: string; mimeType: string; preview: string }, i) => (
                             <div key={i} className="aspect-square rounded-lg overflow-hidden border border-white/10">
                               {f.mimeType.startsWith('video') ? (
                                 <video src={f.preview} className="w-full h-full object-cover" />

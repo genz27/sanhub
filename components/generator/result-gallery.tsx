@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Download, Maximize2, X, Play, Image, Sparkles, Loader2, AlertCircle } from 'lucide-react';
+import { Download, Maximize2, X, Play, Image, Sparkles, Loader2, AlertCircle, Copy, ExternalLink } from 'lucide-react';
 import type { Generation } from '@/types';
 import { formatDate, truncate } from '@/lib/utils';
 import { downloadAsset } from '@/lib/download';
@@ -252,6 +252,74 @@ export function ResultGallery({ generations, tasks = [], onRemoveTask }: ResultG
                   <p className="text-white/40 text-xs mt-2">
                     {formatDate(selected.createdAt)} · 消耗 {selected.cost} 积分
                   </p>
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <span className="text-white/40 text-xs shrink-0 w-14">URL</span>
+                      <span className="text-white/70 text-xs break-all flex-1">{selected.resultUrl || '-'}</span>
+                      {selected.resultUrl && (
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(selected.resultUrl);
+                            toast({ title: '已复制 URL' });
+                          }}
+                          className="shrink-0 p-1.5 text-white/40 hover:text-white/80 hover:bg-white/10 rounded-lg transition-colors"
+                          title="复制 URL"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    {typeof selected.params?.permalink === 'string' && selected.params.permalink && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-white/40 text-xs shrink-0 w-14">详情</span>
+                        <a
+                          href={selected.params.permalink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-white/70 text-xs break-all flex-1 hover:text-white underline underline-offset-2"
+                        >
+                          {selected.params.permalink}
+                        </a>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(selected.params.permalink as string);
+                            toast({ title: '已复制 Permalink' });
+                          }}
+                          className="shrink-0 p-1.5 text-white/40 hover:text-white/80 hover:bg-white/10 rounded-lg transition-colors"
+                          title="复制 Permalink"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                        <a
+                          href={selected.params.permalink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="shrink-0 p-1.5 text-white/40 hover:text-white/80 hover:bg-white/10 rounded-lg transition-colors"
+                          title="打开链接"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      </div>
+                    )}
+
+                    {typeof selected.params?.revised_prompt === 'string' && selected.params.revised_prompt && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-white/40 text-xs shrink-0 w-14">改写</span>
+                        <span className="text-white/70 text-xs break-words flex-1">{selected.params.revised_prompt}</span>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(selected.params.revised_prompt as string);
+                            toast({ title: '已复制改写提示词' });
+                          }}
+                          className="shrink-0 p-1.5 text-white/40 hover:text-white/80 hover:bg-white/10 rounded-lg transition-colors"
+                          title="复制改写提示词"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="flex gap-2 shrink-0 w-full md:w-auto">
                   <button

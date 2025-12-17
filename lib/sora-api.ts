@@ -39,7 +39,9 @@ export interface VideoGenerationResponse {
   model: string;
   data: Array<{
     url: string;
+    permalink?: string;
     revised_prompt?: string;
+    [key: string]: unknown;
   }>;
 }
 

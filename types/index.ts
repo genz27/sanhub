@@ -92,6 +92,8 @@ export interface GenerationParams {
   referenceImages?: string[]; // base64 数组
   loras?: string | Record<string, number>; // Z-Image LoRA 配置
   channel?: 'modelscope' | 'gitee'; // Z-Image 渠道
+  permalink?: string;
+  revised_prompt?: string;
 }
 
 // SORA 后台配置
@@ -170,7 +172,7 @@ export interface SoraGenerateRequest {
   prompt: string;
   model: string; // sora-video-landscape-10s, sora-image 等
   files?: { mimeType: string; data: string }[];
-  style_id?: string; // 风格: festive, retro, news, selfie, handheld, anime
+  style_id?: string; // 风格: festive, retro, news, selfie, handheld, anime, comic, golden, vintage
   remix_target_id?: string; // Remix 视频 ID
 }
 
@@ -198,6 +200,8 @@ export interface GenerateResult {
   type: GenerationType;
   url: string;
   cost: number;
+  permalink?: string;
+  revised_prompt?: string;
 }
 
 // NextAuth 扩展

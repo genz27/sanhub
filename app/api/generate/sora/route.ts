@@ -37,6 +37,11 @@ async function processGenerationTask(
     await updateGeneration(generationId, {
       status: 'completed',
       resultUrl: result.url,
+      params: {
+        model: body.model,
+        permalink: result.permalink,
+        revised_prompt: result.revised_prompt,
+      },
     }).catch(err => {
       console.error(`[Task ${generationId}] 更新完成状态失败:`, err);
     });

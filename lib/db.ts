@@ -206,6 +206,17 @@ export async function initializeDatabase(): Promise<void> {
     // 字段已存在，忽略错误
   }
 
+  // 确保 generations.params 列存在（用于存储 permalink / revised_prompt 等扩展信息）
+  try {
+    if (dbType === 'mysql') {
+      await db.execute('ALTER TABLE generations ADD COLUMN params TEXT');
+    } else {
+      await db.execute('ALTER TABLE generations ADD COLUMN params TEXT');
+    }
+  } catch {
+    // 字段已存在，忽略错误
+  }
+
   try {
     if (dbType === 'mysql') {
       await db.execute('ALTER TABLE generations ADD COLUMN updated_at BIGINT NOT NULL DEFAULT 0');
@@ -221,6 +232,7 @@ export async function initializeDatabase(): Promise<void> {
   try {
     await db.execute('UPDATE generations SET status = "completed" WHERE status IS NULL OR status = ""');
     await db.execute('UPDATE generations SET updated_at = created_at WHERE updated_at = 0 OR updated_at IS NULL');
+    await db.execute("UPDATE generations SET params = '{}' WHERE params IS NULL OR params = ''");
   } catch {
     // 忽略错误
   }
@@ -585,7 +597,7 @@ export async function saveGeneration(
 
 export async function updateGeneration(
   id: string,
-  updates: Partial<Pick<Generation, 'status' | 'resultUrl' | 'errorMessage'>>
+  updates: Partial<Pick<Generation, 'status' | 'resultUrl' | 'errorMessage' | 'params'>>
 ): Promise<Generation | null> {
   await initializeDatabase();
   const db = getAdapter();
@@ -600,6 +612,10 @@ export async function updateGeneration(
   if (updates.resultUrl !== undefined) {
     fields.push('result_url = ?');
     values.push(updates.resultUrl);
+  }
+  if (updates.params !== undefined) {
+    fields.push('params = ?');
+    values.push(JSON.stringify(updates.params));
   }
   if (updates.errorMessage !== undefined) {
     fields.push('error_message = ?');

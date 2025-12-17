@@ -2,7 +2,29 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { useSession } from 'next-auth/react';
-import { History, Download, Maximize2, X, Loader2, Play, Image, Video, Palette, Trash2, Check, Square, CheckSquare, Edit3, Copy, User } from 'lucide-react';
+import { 
+  Download,
+  Trash2,
+  Search,
+  Filter,
+  Play,
+  Video,
+  Image,
+  X,
+  Check,
+  CheckSquare,
+  Square,
+  Copy,
+  User,
+  History,
+  Maximize2,
+  Palette,
+  ChevronDown,
+  Loader2,
+  AlertCircle,
+  Edit3,
+  ExternalLink,
+} from 'lucide-react';
 import { toast } from '@/components/ui/toaster';
 import type { Generation, CharacterCard } from '@/types';
 import { formatDate, truncate } from '@/lib/utils';
@@ -845,6 +867,74 @@ export default function HistoryPage() {
                     <span className="px-2 py-0.5 bg-white/10 text-white/60 text-xs rounded">
                       {getTypeBadge(selected.type).label}
                     </span>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <span className="text-white/40 text-xs shrink-0 w-14">URL</span>
+                      <span className="text-white/70 text-xs break-all flex-1">{selected.resultUrl || '-'}</span>
+                      {selected.resultUrl && (
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(selected.resultUrl);
+                            toast({ title: '已复制 URL' });
+                          }}
+                          className="shrink-0 p-1.5 text-white/40 hover:text-white/80 hover:bg-white/10 rounded-lg transition-colors"
+                          title="复制 URL"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    {typeof selected.params?.permalink === 'string' && selected.params.permalink && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-white/40 text-xs shrink-0 w-14">详情</span>
+                        <a
+                          href={selected.params.permalink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-white/70 text-xs break-all flex-1 hover:text-white underline underline-offset-2"
+                        >
+                          {selected.params.permalink}
+                        </a>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(selected.params.permalink as string);
+                            toast({ title: '已复制 Permalink' });
+                          }}
+                          className="shrink-0 p-1.5 text-white/40 hover:text-white/80 hover:bg-white/10 rounded-lg transition-colors"
+                          title="复制 Permalink"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                        <a
+                          href={selected.params.permalink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="shrink-0 p-1.5 text-white/40 hover:text-white/80 hover:bg-white/10 rounded-lg transition-colors"
+                          title="打开链接"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      </div>
+                    )}
+
+                    {typeof selected.params?.revised_prompt === 'string' && selected.params.revised_prompt && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-white/40 text-xs shrink-0 w-14">改写</span>
+                        <span className="text-white/70 text-xs break-words flex-1">{selected.params.revised_prompt}</span>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(selected.params.revised_prompt as string);
+                            toast({ title: '已复制改写提示词' });
+                          }}
+                          className="shrink-0 p-1.5 text-white/40 hover:text-white/80 hover:bg-white/10 rounded-lg transition-colors"
+                          title="复制改写提示词"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex gap-2 shrink-0 w-full md:w-auto">
