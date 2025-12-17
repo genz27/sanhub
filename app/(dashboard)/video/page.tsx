@@ -57,14 +57,14 @@ export default function VideoGenerationPage() {
   // 视频风格选择 (仅普通模式可用)
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
   const VIDEO_STYLES = [
-    { id: 'festive', name: 'Festive', image: '/styles/Festive.jpg' },
-    { id: 'retro', name: 'Retro', image: '/styles/Retro.jpg' },
-    { id: 'news', name: 'News', image: '/styles/News.jpg' },
-    { id: 'selfie', name: 'Selfie', image: '/styles/Selfie.jpg' },
-    { id: 'handheld', name: 'Handheld', image: '/styles/Handheld.jpg' },
     { id: 'anime', name: 'Anime', image: '/styles/Anime.jpg' },
     { id: 'comic', name: 'Comic', image: '/styles/Comic.jpg' },
+    { id: 'festive', name: 'Festive', image: '/styles/Festive.jpg' },
     { id: 'golden', name: 'Golden', image: '/styles/Golden.jpg' },
+    { id: 'handheld', name: 'Handheld', image: '/styles/Handheld.jpg' },
+    { id: 'news', name: 'News', image: '/styles/News.jpg' },
+    { id: 'retro', name: 'Retro', image: '/styles/Retro.jpg' },
+    { id: 'selfie', name: 'Selfie', image: '/styles/Selfie.jpg' },
     { id: 'vintage', name: 'Vintage', image: '/styles/Vintage.jpg' },
   ];
 

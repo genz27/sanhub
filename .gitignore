@@ -99,6 +99,8 @@ Desktop.ini
 *.rar
 *.7z
 *.txt
+*.sql
+*.gz
 # ===================
 # Deployment
 # ===================
