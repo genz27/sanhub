@@ -92,6 +92,7 @@ export interface GenerationParams {
   referenceImages?: string[]; // base64 数组
   loras?: string | Record<string, number>; // Z-Image LoRA 配置
   channel?: 'modelscope' | 'gitee'; // Z-Image 渠道
+  imageCount?: number; // 参考图数量
   permalink?: string;
   revised_prompt?: string;
 }
