@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     const isGitee = channel === 'gitee';
     const modelId = model || (isGitee ? 'z-image-turbo' : 'Tongyi-MAI/Z-Image-Turbo');
 
-    const requiresPrompt = modelId !== 'SeedVR2-3B';
+    const requiresPrompt = modelId !== 'SeedVR2-3B' && modelId !== 'RMBG-2.0';
     if (requiresPrompt && !prompt) {
       return NextResponse.json(
         { success: false, error: '缺少 prompt 参数' },
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
 
     // 构建请求
     const imageList = Array.isArray(images) ? images : [];
-    const requiresReference = modelId === 'Qwen/Qwen-Image-Edit-2509' || modelId === 'SeedVR2-3B';
+    const requiresReference = modelId === 'Qwen/Qwen-Image-Edit-2509' || modelId === 'SeedVR2-3B' || modelId === 'RMBG-2.0';
     if (requiresReference && imageList.length === 0) {
       return NextResponse.json(
         { success: false, error: '该模型需要上传参考图' },
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const requestSize = modelId === 'SeedVR2-3B' ? undefined : size;
+    const requestSize = modelId === 'SeedVR2-3B' || modelId === 'RMBG-2.0' ? undefined : size;
 
     const request: ZImageGenerateRequest = {
       prompt: prompt || '',

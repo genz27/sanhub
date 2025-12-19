@@ -455,7 +455,7 @@ export default function ImageGenerationPage() {
                     <ChevronDown className={`w-4 h-4 transition-transform ${showModelDropdown ? 'rotate-180' : ''}`} />
                   </button>
                   {showModelDropdown && (
-                    <div className="absolute z-50 w-full mt-1 bg-zinc-900 border border-white/10 rounded-lg shadow-xl overflow-hidden">
+                    <div className="absolute z-50 w-full mt-1 bg-zinc-900 border border-white/10 rounded-lg shadow-xl max-h-72 overflow-y-auto">
                       {IMAGE_MODELS.map((model) => (
                         <button
                           key={model.id}

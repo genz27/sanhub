@@ -187,12 +187,14 @@ async function requestGiteeJson(
 async function requestGiteeFormData(
   url: string,
   apiKey: string,
-  formData: FormData
+  formData: FormData,
+  extraHeaders?: Record<string, string>
 ): Promise<GiteeImageResponse> {
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
+      ...(extraHeaders || {}),
     },
     body: formData,
   });
@@ -256,6 +258,9 @@ async function generateWithGitee(
 ): Promise<GenerateResult> {
   if (request.model === 'SeedVR2-3B') {
     return generateWithGiteeUpscale(request, config);
+  }
+  if (request.model === 'RMBG-2.0') {
+    return generateWithGiteeMatting(request, config);
   }
 
   const baseUrl = (config.giteeBaseUrl || process.env.GITEE_BASE_URL || 'https://ai.gitee.com/').replace(/\/$/, '') + '/';
@@ -347,6 +352,59 @@ async function generateWithGiteeUpscale(
   const cost = config.pricing?.giteeImage || 30;
 
   console.log('[Gitee] 超分完成:', { cost });
+
+  return {
+    type: 'gitee-image',
+    url: resultUrl,
+    cost,
+  };
+}
+
+// ========================================
+// Gitee 抠图（RMBG-2.0）
+// ========================================
+
+async function generateWithGiteeMatting(
+  request: ZImageGenerateRequest,
+  config: Awaited<ReturnType<typeof getSystemConfig>>
+): Promise<GenerateResult> {
+  const baseUrl = (config.giteeBaseUrl || process.env.GITEE_BASE_URL || 'https://ai.gitee.com/').replace(/\/$/, '') + '/';
+  const url = `${baseUrl}v1/images/mattings`;
+
+  const input = request.images?.[0];
+  if (!input?.data) {
+    throw new Error('缺少参考图');
+  }
+
+  const formData = new FormData();
+  formData.append('model', request.model || 'RMBG-2.0');
+
+  if (isHttpUrl(input.data)) {
+    formData.append('image_url', input.data);
+  } else {
+    const parsed = parseDataUrl(input.data);
+    const mimeType = parsed?.mimeType || input.mimeType || 'application/octet-stream';
+    const base64Data = parsed?.data || input.data;
+    const buffer = Buffer.from(base64Data, 'base64');
+    const blob = new Blob([buffer], { type: mimeType });
+    formData.append('image', blob, 'input.webp');
+  }
+
+  const data = await requestGiteeWithFallback(config, (apiKey) =>
+    requestGiteeFormData(url, apiKey, formData, { 'X-Failover-Enabled': 'true' })
+  );
+
+  const imageData = data.data?.[0];
+  if (!imageData?.url && !imageData?.b64_json) {
+    throw new Error('Gitee API 返回成功但未包含图片');
+  }
+
+  const resultUrl = imageData.url
+    ? imageData.url
+    : `data:${imageData.type || 'image/png'};base64,${imageData.b64_json}`;
+  const cost = config.pricing?.giteeImage || 30;
+
+  console.log('[Gitee] 抠图完成:', { cost });
 
   return {
     type: 'gitee-image',

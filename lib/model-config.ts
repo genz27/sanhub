@@ -144,27 +144,6 @@ export const IMAGE_MODELS: ImageModelConfig[] = [
     defaultAspectRatio: '1:1',
     defaultImageSize: '1K',
   },
-  // SeedVR2 Upscale (Gitee)
-  {
-    id: 'seedvr2-upscale',
-    name: 'SeedVR2 HD',
-    description: 'Gitee AI 超清修复',
-    provider: 'zimage',
-    channel: 'gitee',
-    apiModel: 'SeedVR2-3B',
-    highlight: true,
-    requiresReferenceImage: true,
-    allowEmptyPrompt: true,
-    features: {
-      supportReferenceImage: true,
-      supportImageSize: false,
-    },
-    aspectRatios: ['原图'],
-    resolutions: {
-      原图: '',
-    },
-    defaultAspectRatio: '原图',
-  },
   // Z-Image Gitee
   {
     id: 'zimage-gitee',
@@ -281,6 +260,47 @@ export const IMAGE_MODELS: ImageModelConfig[] = [
       '9:16': '720x1280',
     },
     defaultAspectRatio: '1:1',
+  },
+  // RMBG Matting (Gitee)
+  {
+    id: 'rmbg-2',
+    name: 'RMBG 2.0',
+    description: 'Gitee AI 抠图',
+    provider: 'zimage',
+    channel: 'gitee',
+    apiModel: 'RMBG-2.0',
+    requiresReferenceImage: true,
+    allowEmptyPrompt: true,
+    features: {
+      supportReferenceImage: true,
+      supportImageSize: false,
+    },
+    aspectRatios: ['原图'],
+    resolutions: {
+      原图: '',
+    },
+    defaultAspectRatio: '原图',
+  },
+  // SeedVR2 Upscale (Gitee)
+  {
+    id: 'seedvr2-upscale',
+    name: 'SeedVR2 HD',
+    description: 'Gitee AI 超清修复 · 限制: 图片<=5MB, 宽高<=1440px · 报错: Image file size exceeds 5MB limit / 图片分辨率不支持，宽高需在1440像素以内，当前为1434x2570',
+    provider: 'zimage',
+    channel: 'gitee',
+    apiModel: 'SeedVR2-3B',
+    highlight: true,
+    requiresReferenceImage: true,
+    allowEmptyPrompt: true,
+    features: {
+      supportReferenceImage: true,
+      supportImageSize: false,
+    },
+    aspectRatios: ['原图'],
+    resolutions: {
+      原图: '',
+    },
+    defaultAspectRatio: '原图',
   },
 ];
 
