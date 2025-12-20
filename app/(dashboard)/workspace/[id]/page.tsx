@@ -67,14 +67,17 @@ export default function WorkspaceEditorPage() {
   const nodesRef = useRef<WorkspaceNode[]>([]);
   const edgesRef = useRef<WorkspaceEdge[]>([]);
 
-  const getCanvasPoint = useCallback((event: PointerEvent | React.PointerEvent | MouseEvent) => {
+  const getCanvasPoint = useCallback(
+    (event: PointerEvent | MouseEvent | React.PointerEvent<Element> | React.MouseEvent<Element>) => {
     const container = scrollRef.current;
     if (!container) return { x: 0, y: 0 };
     const rect = container.getBoundingClientRect();
     const x = (event.clientX - rect.left + container.scrollLeft) / zoom;
     const y = (event.clientY - rect.top + container.scrollTop) / zoom;
     return { x, y };
-  }, [zoom]);
+    },
+    [zoom]
+  );
 
   useEffect(() => {
     nodesRef.current = nodes;
