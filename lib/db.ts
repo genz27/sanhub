@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS system_config (
   sora_backend_token VARCHAR(500) DEFAULT '',
   pricing_sora_video_10s INT DEFAULT 100,
   pricing_sora_video_15s INT DEFAULT 150,
+  pricing_sora_video_25s INT DEFAULT 200,
   pricing_sora_image INT DEFAULT 50,
   pricing_gemini_nano INT DEFAULT 10,
   pricing_gemini_pro INT DEFAULT 30,
@@ -289,6 +290,13 @@ export async function initializeDatabase(): Promise<void> {
   }
   try {
     await db.execute('ALTER TABLE system_config ADD COLUMN pricing_gitee_image INT DEFAULT 30');
+  } catch {
+    // 字段已存在，忽略错误
+  }
+
+  // 添加 25s 视频定价字段
+  try {
+    await db.execute('ALTER TABLE system_config ADD COLUMN pricing_sora_video_25s INT DEFAULT 200');
   } catch {
     // 字段已存在，忽略错误
   }
@@ -938,6 +946,7 @@ export async function getSystemConfig(): Promise<SystemConfig> {
         pricing: {
           soraVideo10s: 100,
           soraVideo15s: 150,
+          soraVideo25s: 200,
           soraImage: 50,
           geminiNano: 10,
           geminiPro: 30,
@@ -986,6 +995,7 @@ export async function getSystemConfig(): Promise<SystemConfig> {
       pricing: {
         soraVideo10s: row.pricing_sora_video_10s || 100,
         soraVideo15s: row.pricing_sora_video_15s || 150,
+        soraVideo25s: row.pricing_sora_video_25s || 200,
         soraImage: row.pricing_sora_image || 50,
         geminiNano: row.pricing_gemini_nano || 10,
         geminiPro: row.pricing_gemini_pro || 30,
@@ -1093,6 +1103,10 @@ export async function updateSystemConfig(
     if (p.soraVideo15s !== undefined) {
       fields.push('pricing_sora_video_15s = ?');
       values.push(p.soraVideo15s);
+    }
+    if (p.soraVideo25s !== undefined) {
+      fields.push('pricing_sora_video_25s = ?');
+      values.push(p.soraVideo25s);
     }
     if (p.soraImage !== undefined) {
       fields.push('pricing_sora_image = ?');

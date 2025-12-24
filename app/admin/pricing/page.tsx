@@ -154,6 +154,11 @@ export default function PricingPage() {
               value={config.pricing.soraVideo15s}
               onChange={(v) => handleChange('soraVideo15s', v)}
             />
+            <PriceInput
+              label="25 秒视频"
+              value={config.pricing.soraVideo25s}
+              onChange={(v) => handleChange('soraVideo25s', v)}
+            />
           </div>
         </div>
 

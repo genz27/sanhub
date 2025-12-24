@@ -324,11 +324,11 @@ export const VIDEO_MODELS: VideoModelConfig[] = [
     aspectRatios: [
       { value: 'landscape', label: '16:9', icon: '▬' },
       { value: 'portrait', label: '9:16', icon: '▮' },
-      { value: 'square', label: '1:1', icon: '■' },
     ],
     durations: [
       { value: '10s', label: '10 秒' },
       { value: '15s', label: '15 秒' },
+      { value: '25s', label: '25 秒' },
     ],
     defaultAspectRatio: 'landscape',
     defaultDuration: '10s',
@@ -387,9 +387,8 @@ export function getImageResolution(
 }
 
 // 构建 Sora 模型 ID
+// 新格式: sora-video-{orientation}-{duration}
+// 例如: sora-video-landscape-10s, sora-video-portrait-15s, sora-video-landscape-25s
 export function buildSoraModelId(ratio: string, duration: string): string {
-  let base = 'sora-video';
-  if (ratio !== 'square') base += `-${ratio}`;
-  base += `-${duration}`;
-  return base;
+  return `sora-video-${ratio}-${duration}`;
 }

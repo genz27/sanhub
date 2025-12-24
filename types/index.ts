@@ -177,6 +177,7 @@ export interface SystemConfig {
 export interface PricingConfig {
   soraVideo10s: number;
   soraVideo15s: number;
+  soraVideo25s: number;
   soraImage: number;
   geminiNano: number;
   geminiPro: number;
