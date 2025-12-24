@@ -69,8 +69,8 @@ COPY --from=builder /app/node_modules/file-uri-to-path ./node_modules/file-uri-t
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# 复制 prompts 模板
-COPY --from=builder /app/data/prompts ./data/prompts
+# 复制 prompts 模板（直接从源码复制，不经过 builder）
+COPY data/prompts ./data/prompts
 
 # 创建数据目录并设置权限
 RUN mkdir -p /app/data/media && chown -R nextjs:nodejs /app/data
