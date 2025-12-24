@@ -733,7 +733,7 @@ export default function VideoGenerationPage() {
               {/* Duration */}
               <div className="space-y-2">
                 <label className="text-xs text-white/50 uppercase tracking-wider">视频时长</label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   {currentModel.durations.map((d) => (
                     <button
                       key={d.value}
