@@ -158,9 +158,14 @@ CREATE TABLE IF NOT EXISTS workspaces (
 let initialized = false;
 
 export async function initializeDatabase(): Promise<void> {
+  const db = getAdapter();
+
+  // 渠道表始终尝试创建（幂等操作，确保新表被创建）
+  await initializeImageChannelsTablesInternal(db);
+  await initializeVideoChannelsTablesInternal(db);
+
   if (initialized) return;
 
-  const db = getAdapter();
   const statements = CREATE_TABLES_SQL.split(';').filter((s) => s.trim());
 
   for (const statement of statements) {
@@ -471,10 +476,6 @@ export async function initializeDatabase(): Promise<void> {
       // 忽略错误
     }
   }
-
-  // 初始化图像渠道和视频渠道表（确保启动时就创建）
-  await initializeImageChannelsTablesInternal(db);
-  await initializeVideoChannelsTablesInternal(db);
 
   initialized = true;
   console.log('Database initialized successfully');
