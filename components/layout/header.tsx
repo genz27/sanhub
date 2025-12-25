@@ -7,6 +7,7 @@ import { signOut } from 'next-auth/react';
 import { LogOut, Settings, Menu, X, Video, Image, History, Shield, MessageSquare, Workflow } from 'lucide-react';
 import type { SafeUser } from '@/types';
 import { cn } from '@/lib/utils';
+import { useSiteConfig } from '@/components/providers/site-config-provider';
 
 interface HeaderProps {
   user: SafeUser;
@@ -15,6 +16,7 @@ interface HeaderProps {
 export function Header({ user }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  const siteConfig = useSiteConfig();
 
   const navItems = [
     { href: '/image', icon: Image, label: '图像生成' },
@@ -40,9 +42,9 @@ export function Header({ user }: HeaderProps) {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3">
             <div className="w-8 h-8 border border-white/30 rounded-lg flex items-center justify-center">
-              <span className="text-sm font-light text-white">S</span>
+              <span className="text-sm font-light text-white">{siteConfig.siteName.charAt(0)}</span>
             </div>
-            <span className="font-light text-lg tracking-wider text-white hidden sm:block">SANHUB</span>
+            <span className="font-light text-lg tracking-wider text-white hidden sm:block">{siteConfig.siteName}</span>
           </Link>
 
           {/* User Info */}

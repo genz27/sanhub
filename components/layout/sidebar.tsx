@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { SafeUser } from '@/types';
+import { useSiteConfig } from '@/components/providers/site-config-provider';
 
 interface SidebarProps {
   user: SafeUser;
@@ -36,6 +37,7 @@ const adminItems = [
 
 export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
+  const siteConfig = useSiteConfig();
 
   return (
     <>
@@ -123,7 +125,7 @@ export function Sidebar({ user }: SidebarProps) {
       {/* Footer */}
       <div className="p-4 border-t border-white/10">
         <div className="flex items-center justify-center gap-3">
-          <p className="text-[10px] text-white/20">SANHUB © 2025</p>
+          <p className="text-[10px] text-white/20">{siteConfig.siteName} © {new Date().getFullYear()}</p>
           <a 
             href="https://github.com/genz27/sanhub" 
             target="_blank" 
