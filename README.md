@@ -56,10 +56,11 @@
 
 ### 🛠️ 系统管理
 - 用户管理与权限控制
-- API 密钥配置
+- **图像渠道管理** - 统一管理图像生成渠道和模型
+- **视频渠道管理** - 统一管理视频生成渠道和模型
 - **AI 对话模型管理**
 - **Sora Token 管理**
-- 积分定价自定义
+- 渠道内模型独立定价
 - 系统公告发布
 - 注册开关控制
 - PicUI 图床集成
@@ -185,10 +186,11 @@ sanhub/
 │   │   └── settings/        # 用户设置
 │   ├── admin/               # 管理后台
 │   │   ├── users/           # 用户管理
-│   │   ├── api/             # API 配置
-│   │   ├── models/          # AI 模型管理
+│   │   ├── models/          # AI 聊天模型管理
+│   │   ├── image-channels/  # 图像渠道管理
+│   │   ├── video-channels/  # 视频渠道管理
 │   │   ├── tokens/          # Sora Token 管理
-│   │   ├── pricing/         # 定价设置
+│   │   ├── site/            # 网站配置
 │   │   └── announcement/    # 公告管理
 │   └── api/                 # API 路由
 ├── components/
@@ -203,27 +205,23 @@ sanhub/
 │   ├── db.ts                # 数据库操作
 │   ├── db-adapter.ts        # 数据库适配器
 │   ├── auth.ts              # 认证配置
+│   ├── image-generator.ts   # 统一图像生成器
 │   ├── sora.ts              # Sora API 封装
 │   ├── gemini.ts            # Gemini API 封装
 │   ├── zimage.ts            # Z-Image API 封装
-│   ├── model-config.ts      # 模型配置
+│   ├── model-config.ts      # 模型配置（旧，兼容）
 │   └── picui.ts             # PicUI 图床 API
 └── types/                   # TypeScript 类型定义
 ```
 
-## 💰 积分消耗（默认）
+## 💰 积分消耗
 
-| 功能 | 消耗积分 |
-|------|----------|
-| Sora 视频 10s | 100 |
-| Sora 视频 15s | 150 |
-| Sora 图像 | 50 |
-| Gemini Nano | 10 |
-| Gemini Pro | 30 |
-| Z-Image | 30 |
-| Gitee AI | 30 |
+积分消耗在管理后台的渠道管理中按模型独立配置：
 
-> 💡 积分消耗可在管理后台 `/admin/pricing` 自定义调整
+- **图像渠道** (`/admin/image-channels`) - 每个图像模型可设置独立的 `costPerGeneration`
+- **视频渠道** (`/admin/video-channels`) - 每个视频模型按时长配置不同价格（如 10s=100, 15s=150, 25s=200）
+
+> 💡 首次使用可点击「从旧配置迁移」按钮自动创建默认渠道和模型
 
 ## 🖼️ 图床配置
 
@@ -235,7 +233,7 @@ sanhub/
 | **本地文件** | 未配置图床时保存到 `./data/media/` |
 | **Base64** | 全部失败时回退到数据库存储 |
 
-在管理后台 `/admin/api` 配置 PicUI Token（从 picui.cn 个人中心获取）。
+在管理后台 `/admin/site` 配置 PicUI Token（从 picui.cn 个人中心获取）。
 
 ## 📖 环境变量
 
