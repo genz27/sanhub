@@ -350,9 +350,13 @@ export function getVideoModelById(id: string): VideoModelConfig | undefined {
 // 根据渠道启用状态过滤图像模型
 export function filterImageModelsByChannel(
   models: ImageModelConfig[],
-  channelEnabled: { sora: boolean; gemini: boolean; zimage: boolean; gitee: boolean }
+  channelEnabled: { sora: boolean; gemini: boolean; zimage: boolean; gitee: boolean },
+  disabledModels: string[] = []
 ): ImageModelConfig[] {
   return models.filter((model) => {
+    // 先检查是否被单独禁用
+    if (disabledModels.includes(model.id)) return false;
+    // 再检查渠道是否启用
     if (model.provider === 'sora') return channelEnabled.sora;
     if (model.provider === 'gemini') return channelEnabled.gemini;
     if (model.provider === 'zimage') {
@@ -366,9 +370,13 @@ export function filterImageModelsByChannel(
 // 根据渠道启用状态过滤视频模型
 export function filterVideoModelsByChannel(
   models: VideoModelConfig[],
-  channelEnabled: { sora: boolean; gemini: boolean; zimage: boolean; gitee: boolean }
+  channelEnabled: { sora: boolean; gemini: boolean; zimage: boolean; gitee: boolean },
+  disabledModels: string[] = []
 ): VideoModelConfig[] {
   return models.filter((model) => {
+    // 先检查是否被单独禁用
+    if (disabledModels.includes(model.id)) return false;
+    // 再检查渠道是否启用
     if (model.provider === 'sora') return channelEnabled.sora;
     return true;
   });

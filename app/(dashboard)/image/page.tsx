@@ -23,7 +23,7 @@ import {
   getImageResolution,
   filterImageModelsByChannel,
 } from '@/lib/model-config';
-import type { ChannelEnabledConfig, DailyLimitConfig } from '@/types';
+import type { ChannelEnabledConfig, DailyLimitConfig, ModelDisabledConfig } from '@/types';
 
 // 每日使用量类型
 interface DailyUsage {
@@ -46,6 +46,9 @@ export default function ImageGenerationPage() {
   });
   const [channelLoaded, setChannelLoaded] = useState(false);
 
+  // 禁用的模型
+  const [disabledModels, setDisabledModels] = useState<string[]>([]);
+
   // 每日限制
   const [dailyUsage, setDailyUsage] = useState<DailyUsage>({ imageCount: 0, videoCount: 0, characterCardCount: 0 });
   const [dailyLimits, setDailyLimits] = useState<DailyLimitConfig>({ imageLimit: 0, videoLimit: 0, characterCardLimit: 0 });
@@ -67,19 +70,26 @@ export default function ImageGenerationPage() {
   const [error, setError] = useState('');
 
   // 过滤后的可用模型
-  const availableModels = filterImageModelsByChannel(IMAGE_MODELS, channelEnabled);
+  const availableModels = filterImageModelsByChannel(IMAGE_MODELS, channelEnabled, disabledModels);
 
   // 获取当前选中的模型配置
   const currentModel = getImageModelById(selectedModelId) || availableModels[0];
 
-  // 加载渠道配置
+  // 加载渠道配置和禁用模型
   useEffect(() => {
     const loadChannels = async () => {
       try {
-        const res = await fetch('/api/channels');
-        if (res.ok) {
-          const data = await res.json();
+        const [channelRes, disabledRes] = await Promise.all([
+          fetch('/api/channels'),
+          fetch('/api/disabled-models'),
+        ]);
+        if (channelRes.ok) {
+          const data = await channelRes.json();
           setChannelEnabled(data.data);
+        }
+        if (disabledRes.ok) {
+          const data = await disabledRes.json();
+          setDisabledModels(data.data?.imageModels || []);
         }
       } catch (err) {
         console.error('Failed to load channels:', err);

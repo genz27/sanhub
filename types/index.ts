@@ -143,6 +143,12 @@ export interface DailyLimitConfig {
   characterCardLimit: number; // 角色卡每日限制，0 表示不限制
 }
 
+// 模型禁用配置
+export interface ModelDisabledConfig {
+  imageModels: string[];   // 禁用的图像模型 ID 列表
+  videoModels: string[];   // 禁用的视频模型 ID 列表
+}
+
 // 网站配置
 export interface SiteConfig {
   siteName: string;           // 网站名称，如 SANHUB
@@ -182,6 +188,8 @@ export interface SystemConfig {
   channelEnabled: ChannelEnabledConfig;
   // 每日请求限制配置
   dailyLimit: DailyLimitConfig;
+  // 模型禁用配置
+  disabledModels: ModelDisabledConfig;
   // 网站配置
   siteConfig: SiteConfig;
 }

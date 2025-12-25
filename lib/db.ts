@@ -433,6 +433,35 @@ export async function initializeDatabase(): Promise<void> {
     // 字段已存在，忽略错误
   }
 
+  // 确保已存在的配置记录有正确的网站配置默认值（仅当字段为空时更新）
+  try {
+    await db.execute(`
+      UPDATE system_config SET
+        site_name = COALESCE(NULLIF(site_name, ''), 'SANHUB'),
+        site_tagline = COALESCE(NULLIF(site_tagline, ''), 'Let Imagination Come Alive'),
+        site_description = COALESCE(NULLIF(site_description, ''), '「SANHUB」是专为 AI 创作打造的一站式平台'),
+        site_sub_description = COALESCE(NULLIF(site_sub_description, ''), '我们融合了 Sora 视频生成、Gemini 图像创作与多模型 AI 对话。在这里，技术壁垒已然消融，你唯一的使命就是释放纯粹的想象。'),
+        contact_email = COALESCE(NULLIF(contact_email, ''), 'support@sanhub.com'),
+        site_copyright = COALESCE(NULLIF(site_copyright, ''), 'Copyright © 2025 SANHUB'),
+        site_powered_by = COALESCE(NULLIF(site_powered_by, ''), 'Powered by OpenAI Sora & Google Gemini')
+      WHERE id = 1
+    `);
+  } catch {
+    // 忽略错误
+  }
+
+  // 添加模型禁用配置字段
+  try {
+    await db.execute("ALTER TABLE system_config ADD COLUMN disabled_image_models TEXT");
+  } catch {
+    // 字段已存在，忽略错误
+  }
+  try {
+    await db.execute("ALTER TABLE system_config ADD COLUMN disabled_video_models TEXT");
+  } catch {
+    // 字段已存在，忽略错误
+  }
+
   // 更新 generations 表的 type 字段以支持 gitee-image（MySQL 需要修改 ENUM）
   if (dbType === 'mysql') {
     try {
@@ -1018,6 +1047,10 @@ export async function getSystemConfig(): Promise<SystemConfig> {
           copyright: 'Copyright © 2025 SANHUB',
           poweredBy: 'Powered by OpenAI Sora & Google Gemini',
         },
+        disabledModels: {
+          imageModels: [],
+          videoModels: [],
+        },
       };
     }
 
@@ -1075,6 +1108,10 @@ export async function getSystemConfig(): Promise<SystemConfig> {
         contactEmail: row.contact_email || 'support@sanhub.com',
         copyright: row.site_copyright || 'Copyright © 2025 SANHUB',
         poweredBy: row.site_powered_by || 'Powered by OpenAI Sora & Google Gemini',
+      },
+      disabledModels: {
+        imageModels: row.disabled_image_models ? JSON.parse(row.disabled_image_models) : [],
+        videoModels: row.disabled_video_models ? JSON.parse(row.disabled_video_models) : [],
       },
     };
   });
@@ -1276,6 +1313,18 @@ export async function updateSystemConfig(
     if (s.poweredBy !== undefined) {
       fields.push('site_powered_by = ?');
       values.push(s.poweredBy);
+    }
+  }
+  // 模型禁用配置
+  if (updates.disabledModels) {
+    const d = updates.disabledModels;
+    if (d.imageModels !== undefined) {
+      fields.push('disabled_image_models = ?');
+      values.push(JSON.stringify(d.imageModels));
+    }
+    if (d.videoModels !== undefined) {
+      fields.push('disabled_video_models = ?');
+      values.push(JSON.stringify(d.videoModels));
     }
   }
 

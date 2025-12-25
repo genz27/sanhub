@@ -28,7 +28,7 @@ import {
   buildSoraModelId,
   filterVideoModelsByChannel,
 } from '@/lib/model-config';
-import type { ChannelEnabledConfig, DailyLimitConfig } from '@/types';
+import type { ChannelEnabledConfig, DailyLimitConfig, ModelDisabledConfig } from '@/types';
 
 type CreationMode = 'normal' | 'remix' | 'storyboard';
 
@@ -57,6 +57,9 @@ export default function VideoGenerationPage() {
     zimage: true,
     gitee: true,
   });
+
+  // 禁用的模型
+  const [disabledModels, setDisabledModels] = useState<string[]>([]);
 
   // 每日限制
   const [dailyUsage, setDailyUsage] = useState<DailyUsage>({ imageCount: 0, videoCount: 0, characterCardCount: 0 });
@@ -111,19 +114,26 @@ export default function VideoGenerationPage() {
   const remixPromptRef = useRef<HTMLTextAreaElement>(null);
 
   // 过滤后的可用模型
-  const availableModels = filterVideoModelsByChannel(VIDEO_MODELS, channelEnabled);
+  const availableModels = filterVideoModelsByChannel(VIDEO_MODELS, channelEnabled, disabledModels);
 
   // 获取当前选中的模型配置
   const currentModel = getVideoModelById(selectedModelId) || availableModels[0];
 
-  // 加载渠道配置
+  // 加载渠道配置和禁用模型
   useEffect(() => {
     const loadChannels = async () => {
       try {
-        const res = await fetch('/api/channels');
-        if (res.ok) {
-          const data = await res.json();
+        const [channelRes, disabledRes] = await Promise.all([
+          fetch('/api/channels'),
+          fetch('/api/disabled-models'),
+        ]);
+        if (channelRes.ok) {
+          const data = await channelRes.json();
           setChannelEnabled(data.data);
+        }
+        if (disabledRes.ok) {
+          const data = await disabledRes.json();
+          setDisabledModels(data.data?.videoModels || []);
         }
       } catch (err) {
         console.error('Failed to load channels:', err);
