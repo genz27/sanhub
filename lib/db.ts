@@ -472,6 +472,10 @@ export async function initializeDatabase(): Promise<void> {
     }
   }
 
+  // 初始化图像渠道和视频渠道表（确保启动时就创建）
+  await initializeImageChannelsTablesInternal(db);
+  await initializeVideoChannelsTablesInternal(db);
+
   initialized = true;
   console.log('Database initialized successfully');
 }
@@ -1967,12 +1971,9 @@ CREATE TABLE IF NOT EXISTS image_models (
 );
 `;
 
-// 初始化图像渠道和模型表
-export async function initializeImageChannelsTables(): Promise<void> {
-  await initializeDatabase();
-  const db = getAdapter();
+// 内部初始化函数（供 initializeDatabase 调用，避免循环依赖）
+async function initializeImageChannelsTablesInternal(db: DatabaseAdapter): Promise<void> {
   const statements = CREATE_IMAGE_CHANNELS_SQL.split(';').filter((s) => s.trim());
-
   for (const statement of statements) {
     if (statement.trim()) {
       try {
@@ -1982,6 +1983,13 @@ export async function initializeImageChannelsTables(): Promise<void> {
       }
     }
   }
+}
+
+// 初始化图像渠道和模型表
+export async function initializeImageChannelsTables(): Promise<void> {
+  await initializeDatabase();
+  const db = getAdapter();
+  await initializeImageChannelsTablesInternal(db);
 }
 
 // 获取所有图像渠道
@@ -2465,12 +2473,9 @@ CREATE TABLE IF NOT EXISTS video_models (
 );
 `;
 
-// 初始化视频渠道表
-export async function initializeVideoChannelsTables(): Promise<void> {
-  await initializeDatabase();
-  const db = getAdapter();
+// 内部初始化函数（供 initializeDatabase 调用，避免循环依赖）
+async function initializeVideoChannelsTablesInternal(db: DatabaseAdapter): Promise<void> {
   const statements = CREATE_VIDEO_CHANNELS_SQL.split(';').filter((s) => s.trim());
-
   for (const statement of statements) {
     if (statement.trim()) {
       try {
@@ -2480,6 +2485,13 @@ export async function initializeVideoChannelsTables(): Promise<void> {
       }
     }
   }
+}
+
+// 初始化视频渠道表
+export async function initializeVideoChannelsTables(): Promise<void> {
+  await initializeDatabase();
+  const db = getAdapter();
+  await initializeVideoChannelsTablesInternal(db);
 }
 
 // 获取所有视频渠道
