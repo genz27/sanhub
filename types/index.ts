@@ -149,6 +149,88 @@ export interface ModelDisabledConfig {
   videoModels: string[];   // 禁用的视频模型 ID 列表
 }
 
+// ========================================
+// 渠道与模型配置（动态配置）
+// ========================================
+
+// 渠道类型 - 决定请求方式
+export type ChannelType = 'openai-compatible' | 'modelscope' | 'gitee' | 'gemini' | 'sora';
+
+// 模型功能特性
+export interface ImageModelFeatures {
+  textToImage: boolean;      // 文生图
+  imageToImage: boolean;     // 图生图
+  upscale: boolean;          // 超分辨率
+  matting: boolean;          // 抠图
+  multipleImages: boolean;   // 支持多张参考图
+  imageSize: boolean;        // 支持分辨率选择 (1K/2K/4K)
+}
+
+// 图像渠道配置
+export interface ImageChannel {
+  id: string;
+  name: string;              // 渠道名称，如 "NEWAPI", "ModelScope"
+  type: ChannelType;         // 渠道类型，决定请求方式
+  baseUrl: string;           // 默认 Base URL
+  apiKey: string;            // 默认 API Key（支持多 key 逗号分隔）
+  enabled: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// 图像模型配置
+export interface ImageModel {
+  id: string;
+  channelId: string;         // 关联渠道
+  name: string;              // 显示名称
+  description: string;
+  apiModel: string;          // 实际调用的模型名
+  baseUrl?: string;          // 可选，覆盖渠道默认
+  apiKey?: string;           // 可选，覆盖渠道默认
+  features: ImageModelFeatures;
+  aspectRatios: string[];    // 支持的画面比例
+  resolutions: Record<string, string | Record<string, string>>; // 比例对应的分辨率
+  imageSizes?: string[];     // 支持的分辨率档位 (1K/2K/4K)
+  defaultAspectRatio: string;
+  defaultImageSize?: string;
+  requiresReferenceImage?: boolean; // 是否必须上传参考图
+  allowEmptyPrompt?: boolean;       // 是否允许空提示词
+  highlight?: boolean;              // 是否高亮显示
+  enabled: boolean;
+  costPerGeneration: number;
+  sortOrder: number;         // 排序顺序
+  createdAt: number;
+  updatedAt: number;
+}
+
+// 前端使用的渠道（不含敏感信息）
+export interface SafeImageChannel {
+  id: string;
+  name: string;
+  type: ChannelType;
+  enabled: boolean;
+}
+
+// 前端使用的模型（不含敏感信息）
+export interface SafeImageModel {
+  id: string;
+  channelId: string;
+  channelType: ChannelType;
+  name: string;
+  description: string;
+  features: ImageModelFeatures;
+  aspectRatios: string[];
+  resolutions: Record<string, string | Record<string, string>>;
+  imageSizes?: string[];
+  defaultAspectRatio: string;
+  defaultImageSize?: string;
+  requiresReferenceImage?: boolean;
+  allowEmptyPrompt?: boolean;
+  highlight?: boolean;
+  enabled: boolean;
+  costPerGeneration: number;
+}
+
 // 网站配置
 export interface SiteConfig {
   siteName: string;           // 网站名称，如 SANHUB

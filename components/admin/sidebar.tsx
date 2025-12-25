@@ -16,7 +16,8 @@ import {
   Sparkles,
   MessageSquare,
   Globe,
-  Layers
+  Layers,
+  Image
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -36,7 +37,8 @@ const navItems: NavItem[] = [
   { href: '/admin/pricing', label: '积分定价', icon: Coins, roles: ['admin'] },
   { href: '/admin/api', label: 'API 配置', icon: Settings, roles: ['admin'] },
   { href: '/admin/models', label: '聊天模型', icon: MessageSquare, roles: ['admin'] },
-  { href: '/admin/model-settings', label: '生成模型', icon: Layers, roles: ['admin'] },
+  { href: '/admin/image-channels', label: '图像渠道', icon: Image, roles: ['admin'] },
+  { href: '/admin/model-settings', label: '生成模型(旧)', icon: Layers, roles: ['admin'] },
   { href: '/admin/tokens', label: 'SORA Tokens', icon: Key, roles: ['admin'] },
   { href: '/admin/announcement', label: '公告管理', icon: Megaphone, roles: ['admin'] },
   { href: '/admin/site', label: '网站配置', icon: Globe, roles: ['admin'] },
