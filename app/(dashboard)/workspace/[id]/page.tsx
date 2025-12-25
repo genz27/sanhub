@@ -24,17 +24,25 @@ import {
 } from 'lucide-react';
 import { toast } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
-import {
-  IMAGE_MODELS,
-  VIDEO_MODELS,
-  buildSoraModelId,
-  getImageModelById,
-  getImageResolution,
-  getVideoModelById,
-  ImageModelConfig,
-  VideoModelConfig,
-} from '@/lib/model-config';
-import type { CharacterCard, WorkspaceData, WorkspaceEdge, WorkspaceNode, WorkspaceNodeType, ChatModel } from '@/types';
+import type { CharacterCard, WorkspaceData, WorkspaceEdge, WorkspaceNode, WorkspaceNodeType, ChatModel, SafeImageModel, SafeVideoModel } from '@/types';
+
+interface PromptTemplate {
+  id: string;
+  name: string;
+  content: string;
+}
+
+// 获取图像分辨率
+function getImageResolution(
+  model: SafeImageModel,
+  aspectRatio: string,
+  imageSize?: string
+): string {
+  if (model.features.imageSize && imageSize && typeof model.resolutions[imageSize] === 'object') {
+    return (model.resolutions[imageSize] as Record<string, string>)[aspectRatio] || '';
+  }
+  return (model.resolutions as Record<string, string>)[aspectRatio] || '';
+}
 
 interface PromptTemplate {
   id: string;
@@ -83,6 +91,8 @@ export default function WorkspaceEditorPage() {
   } | null>(null);
   const [chatModels, setChatModels] = useState<ChatModel[]>([]);
   const [promptTemplates, setPromptTemplates] = useState<PromptTemplate[]>([]);
+  const [imageModels, setImageModels] = useState<SafeImageModel[]>([]);
+  const [videoModels, setVideoModels] = useState<SafeVideoModel[]>([]);
   const nodesRef = useRef<WorkspaceNode[]>([]);
   const edgesRef = useRef<WorkspaceEdge[]>([]);
 
@@ -210,6 +220,34 @@ export default function WorkspaceEditorPage() {
   }, []);
 
   useEffect(() => {
+    const loadImageModels = async () => {
+      try {
+        const res = await fetch('/api/image-models');
+        if (!res.ok) return;
+        const data = await res.json();
+        setImageModels(data.data?.models || []);
+      } catch (error) {
+        console.error('Failed to load image models:', error);
+      }
+    };
+    loadImageModels();
+  }, []);
+
+  useEffect(() => {
+    const loadVideoModels = async () => {
+      try {
+        const res = await fetch('/api/video-models');
+        if (!res.ok) return;
+        const data = await res.json();
+        setVideoModels(data.data?.models || []);
+      } catch (error) {
+        console.error('Failed to load video models:', error);
+      }
+    };
+    loadVideoModels();
+  }, []);
+
+  useEffect(() => {
     const loadPromptTemplates = async () => {
       try {
         const res = await fetch('/api/prompts');
@@ -261,32 +299,32 @@ export default function WorkspaceEditorPage() {
     (type: WorkspaceNodeType, position: { x: number; y: number }) => {
       const id = crypto.randomUUID();
       if (type === 'image') {
-        const model = IMAGE_MODELS[0];
+        const model = imageModels[0];
         return {
           id,
           type,
           name: '图片生成',
           position,
           data: {
-            modelId: model.id,
-            aspectRatio: model.defaultAspectRatio,
-            imageSize: model.defaultImageSize,
+            modelId: model?.id || '',
+            aspectRatio: model?.defaultAspectRatio || '1:1',
+            imageSize: model?.defaultImageSize,
             prompt: '',
             status: 'idle',
           },
         } as WorkspaceNode;
       }
       if (type === 'video') {
-        const model = VIDEO_MODELS[0];
+        const model = videoModels[0];
         return {
           id,
           type,
           name: '视频生成',
           position,
           data: {
-            modelId: model.id,
-            aspectRatio: model.defaultAspectRatio,
-            duration: model.defaultDuration,
+            modelId: model?.id || '',
+            aspectRatio: model?.defaultAspectRatio || 'landscape',
+            duration: model?.defaultDuration || '10s',
             prompt: '',
             status: 'idle',
           },
@@ -322,7 +360,7 @@ export default function WorkspaceEditorPage() {
         },
       } as WorkspaceNode;
     },
-    [chatModels]
+    [chatModels, imageModels, videoModels]
   );
 
   const addNodeAt = useCallback(
@@ -418,8 +456,8 @@ export default function WorkspaceEditorPage() {
         return;
       }
       if (fromNode.type === 'image') {
-        const targetModel = getImageModelById(toNode.data.modelId || '') || IMAGE_MODELS[0];
-        if (!targetModel.features.supportReferenceImage) {
+        const targetModel = imageModels.find(m => m.id === toNode.data.modelId) || imageModels[0];
+        if (targetModel && !targetModel.features.imageToImage) {
           toast({ title: '该模型不支持参考图' });
           setConnectingFrom(null);
           return;
@@ -718,7 +756,12 @@ export default function WorkspaceEditorPage() {
 
     try {
       if (node.type === 'image') {
-        const model = getImageModelById(node.data.modelId || '') || IMAGE_MODELS[0];
+        const model = imageModels.find(m => m.id === node.data.modelId) || imageModels[0];
+        if (!model) {
+          updateNodeData(node.id, { errorMessage: '无可用模型', status: 'failed' });
+          return;
+        }
+        
         const imageInputEdge = edgesRef.current.find((edge) => edge.to === node.id);
         const imageInputNode = imageInputEdge
           ? nodesRef.current.find((n) => n.id === imageInputEdge.from && n.type === 'image')
@@ -728,13 +771,11 @@ export default function WorkspaceEditorPage() {
         let referenceImageUrl: string | undefined;
         let referenceImages: string[] | undefined;
         
-        if (model.features.supportReferenceImage) {
+        if (model.features.imageToImage) {
           if (imageInputNode?.data.outputUrl) {
-            // Use connected node's output
             referenceImageUrl = imageInputNode.data.outputUrl;
           } else if (node.data.uploadedImages && node.data.uploadedImages.length > 0) {
-            // Use uploaded images
-            if ((model.features as { supportMultipleImages?: boolean }).supportMultipleImages) {
+            if (model.features.multipleImages) {
               referenceImages = node.data.uploadedImages;
             } else {
               referenceImageUrl = node.data.uploadedImages[0];
@@ -742,7 +783,7 @@ export default function WorkspaceEditorPage() {
           }
         }
 
-        if (imageInputEdge && model.features.supportReferenceImage && !referenceImageUrl && !referenceImages) {
+        if (imageInputEdge && model.features.imageToImage && !referenceImageUrl && !referenceImages) {
           updateNodeData(node.id, { errorMessage: '请先生成上游图片', status: 'failed' });
           return;
         }
@@ -756,62 +797,20 @@ export default function WorkspaceEditorPage() {
         }
 
         updateNodeData(node.id, { status: 'pending', errorMessage: undefined });
-        let res: Response;
-        if (model.provider === 'sora') {
-          const size = getImageResolution(model, node.data.aspectRatio || model.defaultAspectRatio);
-          const payload: Record<string, unknown> = {
-            prompt: basePrompt,
-            model: model.apiModel,
-          };
-          if (referenceImageUrl) {
-            payload.referenceImageUrl = referenceImageUrl;
-          }
-          if (size) {
-            payload.size = size;
-          }
-          res = await fetch('/api/generate/sora-image', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
-        } else if (model.provider === 'gemini') {
-          const geminiPayload: Record<string, unknown> = {
-            model: model.apiModel,
+        
+        // 使用统一的图像生成 API
+        const res = await fetch('/api/generate/image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            modelId: model.id,
             prompt: basePrompt,
             aspectRatio: node.data.aspectRatio || model.defaultAspectRatio,
-            imageSize: model.features.supportImageSize ? node.data.imageSize : undefined,
-          };
-          // Gemini supports multiple images
-          if (referenceImages && referenceImages.length > 0) {
-            geminiPayload.referenceImages = referenceImages;
-          } else if (referenceImageUrl) {
-            geminiPayload.referenceImageUrl = referenceImageUrl;
-          }
-          res = await fetch('/api/generate/gemini', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(geminiPayload),
-          });
-        } else {
-          const size = getImageResolution(model, node.data.aspectRatio || model.defaultAspectRatio);
-          const payload: Record<string, unknown> = {
-            prompt: basePrompt,
-            model: model.apiModel,
-            channel: model.channel,
-            ...(model.channel === 'gitee' && { numInferenceSteps: 9 }),
-          };
-          if (referenceImageUrl) {
-            payload.referenceImageUrl = referenceImageUrl;
-          }
-          if (size) {
-            payload.size = size;
-          }
-          res = await fetch('/api/generate/zimage', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
-        }
+            imageSize: model.features.imageSize ? node.data.imageSize : undefined,
+            referenceImageUrl,
+            referenceImages,
+          }),
+        });
 
         const data = await res.json();
         if (!res.ok) {
@@ -820,23 +819,22 @@ export default function WorkspaceEditorPage() {
         updateNodeData(node.id, { generationId: data.data.id, status: 'pending' });
         pollTaskStatus(node.id, data.data.id);
       } else {
+        // Video generation
         if (!basePrompt) {
           updateNodeData(node.id, { errorMessage: '请输入提示词', status: 'failed' });
           return;
         }
         updateNodeData(node.id, { status: 'pending', errorMessage: undefined });
-        const model = getVideoModelById(node.data.modelId || '') || VIDEO_MODELS[0];
-        const taskModel = buildSoraModelId(
-          node.data.aspectRatio || model.defaultAspectRatio,
-          node.data.duration || model.defaultDuration
-        );
+        
+        const model = videoModels.find(m => m.id === node.data.modelId) || videoModels[0];
+        const taskModel = `sora-video-${node.data.aspectRatio || model?.defaultAspectRatio || 'landscape'}-${node.data.duration || model?.defaultDuration || '10s'}`;
+        
         // Find image input node for reference image
         const videoInputEdge = edgesRef.current.find((edge) => edge.to === node.id);
         const videoInputNode = videoInputEdge
           ? nodesRef.current.find((n) => n.id === videoInputEdge.from && n.type === 'image')
           : undefined;
         
-        // Use connected image output, or uploaded image if no connection
         let referenceImageUrl = videoInputNode?.data.outputUrl;
         if (!referenceImageUrl && node.data.uploadedImages && node.data.uploadedImages.length > 0) {
           referenceImageUrl = node.data.uploadedImages[0];
@@ -1188,9 +1186,9 @@ export default function WorkspaceEditorPage() {
                 // Determine model only for image/video nodes
                 const model =
                   node.type === 'image'
-                    ? getImageModelById(node.data.modelId || '') || IMAGE_MODELS[0]
+                    ? imageModels.find(m => m.id === node.data.modelId) || imageModels[0]
                     : node.type === 'video'
-                    ? getVideoModelById(node.data.modelId || '') || VIDEO_MODELS[0]
+                    ? videoModels.find(m => m.id === node.data.modelId) || videoModels[0]
                     : null;
               const incoming = incomingEdges.get(node.id) || [];
               
@@ -1198,7 +1196,7 @@ export default function WorkspaceEditorPage() {
               const supportsReferenceInput =
                 node.type === 'image' &&
                 model &&
-                (model as typeof IMAGE_MODELS[number]).features.supportReferenceImage;
+                (model as SafeImageModel).features.imageToImage;
               const showInputHandle = 
                 node.type === 'video' || 
                 node.type === 'chat' || 
@@ -1447,13 +1445,13 @@ export default function WorkspaceEditorPage() {
                           onChange={(e) => {
                             const nextId = e.target.value;
                             if (node.type === 'image') {
-                              const nextModel = getImageModelById(nextId) || IMAGE_MODELS[0];
+                              const nextModel = imageModels.find(m => m.id === nextId) || imageModels[0];
                               updateNodeData(node.id, {
                                 modelId: nextId,
-                                aspectRatio: nextModel.defaultAspectRatio,
-                                imageSize: nextModel.defaultImageSize,
+                                aspectRatio: nextModel?.defaultAspectRatio || '1:1',
+                                imageSize: nextModel?.defaultImageSize,
                               });
-                              if (!nextModel.features.supportReferenceImage) {
+                              if (nextModel && !nextModel.features.imageToImage) {
                                 const hasIncoming = edges.some((edge) => edge.to === node.id);
                                 if (hasIncoming) {
                                   setEdgesDirty((prev) => prev.filter((edge) => edge.to !== node.id));
@@ -1461,17 +1459,17 @@ export default function WorkspaceEditorPage() {
                                 }
                               }
                             } else {
-                              const nextModel = getVideoModelById(nextId) || VIDEO_MODELS[0];
+                              const nextModel = videoModels.find(m => m.id === nextId) || videoModels[0];
                               updateNodeData(node.id, {
                                 modelId: nextId,
-                                aspectRatio: nextModel.defaultAspectRatio,
-                                duration: nextModel.defaultDuration,
+                                aspectRatio: nextModel?.defaultAspectRatio || 'landscape',
+                                duration: nextModel?.defaultDuration || '10s',
                               });
                             }
                           }}
                           className="w-full px-2 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-white/30"
                         >
-                          {(node.type === 'image' ? IMAGE_MODELS : VIDEO_MODELS).map((item) => (
+                          {(node.type === 'image' ? imageModels : videoModels).map((item) => (
                             <option key={item.id} value={item.id} className="bg-black">
                               {item.name}
                             </option>
@@ -1485,17 +1483,17 @@ export default function WorkspaceEditorPage() {
                       <div className="space-y-1">
                         <label className="text-[10px] uppercase tracking-wider text-white/40">比例</label>
                         <select
-                          value={node.data.aspectRatio || model.defaultAspectRatio}
+                          value={node.data.aspectRatio || (model as SafeImageModel | SafeVideoModel)?.defaultAspectRatio || '1:1'}
                           onChange={(e) => updateNodeData(node.id, { aspectRatio: e.target.value })}
                           className="w-full px-2 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-white/30"
                         >
                           {node.type === 'image'
-                            ? (model as typeof IMAGE_MODELS[number]).aspectRatios.map((ratio) => (
+                            ? (model as SafeImageModel)?.aspectRatios?.map((ratio: string) => (
                                 <option key={ratio} value={ratio} className="bg-black">
                                   {ratio}
                                 </option>
                               ))
-                            : (model as typeof VIDEO_MODELS[number]).aspectRatios.map((ratio) => (
+                            : (model as SafeVideoModel)?.aspectRatios?.map((ratio: { value: string; label: string }) => (
                                 <option key={ratio.value} value={ratio.value} className="bg-black">
                                   {ratio.label}
                                 </option>
@@ -1507,12 +1505,12 @@ export default function WorkspaceEditorPage() {
                         <div className="space-y-1">
                           <label className="text-[10px] uppercase tracking-wider text-white/40">分辨率</label>
                           <select
-                            value={node.data.imageSize || (model as ImageModelConfig).defaultImageSize || '1K'}
+                            value={node.data.imageSize || (model as SafeImageModel)?.defaultImageSize || '1K'}
                             onChange={(e) => updateNodeData(node.id, { imageSize: e.target.value })}
-                            disabled={!(model as ImageModelConfig).features.supportImageSize}
+                            disabled={!(model as SafeImageModel)?.features?.imageSize}
                             className="w-full px-2 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-white/30 disabled:opacity-40"
                           >
-                            {(model as typeof IMAGE_MODELS[number]).imageSizes?.map((size) => (
+                            {(model as SafeImageModel)?.imageSizes?.map((size: string) => (
                               <option key={size} value={size} className="bg-black">
                                 {size}
                               </option>
@@ -1527,11 +1525,11 @@ export default function WorkspaceEditorPage() {
                         <div className="space-y-1">
                           <label className="text-[10px] uppercase tracking-wider text-white/40">时长</label>
                           <select
-                            value={node.data.duration || (model as VideoModelConfig).defaultDuration}
+                            value={node.data.duration || (model as SafeVideoModel)?.defaultDuration || '10s'}
                             onChange={(e) => updateNodeData(node.id, { duration: e.target.value })}
                             className="w-full px-2 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-white/30"
                           >
-                            {(model as typeof VIDEO_MODELS[number]).durations.map((duration) => (
+                            {(model as SafeVideoModel)?.durations?.map((duration: { value: string; label: string }) => (
                               <option key={duration.value} value={duration.value} className="bg-black">
                                 {duration.label}
                               </option>
@@ -1698,10 +1696,10 @@ export default function WorkspaceEditorPage() {
                     )}
 
                     {/* Upload reference images - only for image nodes without connected image node */}
-                    {node.type === 'image' && model && (model as typeof IMAGE_MODELS[number]).features.supportReferenceImage && !incoming.some(e => nodes.find(n => n.id === e.from)?.type === 'image') && (
+                    {node.type === 'image' && model && (model as SafeImageModel).features.imageToImage && !incoming.some(e => nodes.find(n => n.id === e.from)?.type === 'image') && (
                       <div className="space-y-1">
                         <label className="text-[10px] uppercase tracking-wider text-white/40">
-                          参考图 {(model.features as { supportMultipleImages?: boolean }).supportMultipleImages ? '(可多张)' : '(1张)'}
+                          参考图 {(model as SafeImageModel).features.multipleImages ? '(可多张)' : '(1张)'}
                         </label>
                         <div className="flex flex-wrap gap-1">
                           {(node.data.uploadedImages || []).map((img, idx) => (

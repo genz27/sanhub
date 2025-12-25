@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import {
   Video,
@@ -21,14 +21,7 @@ import {
 import { cn, fileToBase64 } from '@/lib/utils';
 import { toast } from '@/components/ui/toaster';
 import { ResultGallery, type Task } from '@/components/generator/result-gallery';
-import type { Generation, CharacterCard } from '@/types';
-import {
-  VIDEO_MODELS,
-  getVideoModelById,
-  buildSoraModelId,
-  filterVideoModelsByChannel,
-} from '@/lib/model-config';
-import type { ChannelEnabledConfig, DailyLimitConfig, ModelDisabledConfig } from '@/types';
+import type { Generation, CharacterCard, SafeVideoModel, DailyLimitConfig } from '@/types';
 
 type CreationMode = 'normal' | 'remix' | 'storyboard';
 
@@ -50,16 +43,9 @@ export default function VideoGenerationPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
 
-  // 渠道启用状态
-  const [channelEnabled, setChannelEnabled] = useState<ChannelEnabledConfig>({
-    sora: true,
-    gemini: true,
-    zimage: true,
-    gitee: true,
-  });
-
-  // 禁用的模型
-  const [disabledModels, setDisabledModels] = useState<string[]>([]);
+  // 模型列表（从 API 获取）
+  const [availableModels, setAvailableModels] = useState<SafeVideoModel[]>([]);
+  const [modelsLoaded, setModelsLoaded] = useState(false);
 
   // 每日限制
   const [dailyUsage, setDailyUsage] = useState<DailyUsage>({ imageCount: 0, videoCount: 0, characterCardCount: 0 });
@@ -69,7 +55,7 @@ export default function VideoGenerationPage() {
   const [creationMode, setCreationMode] = useState<CreationMode>('normal');
 
   // 模型选择
-  const [selectedModelId, setSelectedModelId] = useState<string>('sora');
+  const [selectedModelId, setSelectedModelId] = useState<string>('');
   const [showModelDropdown, setShowModelDropdown] = useState(false);
 
   // 参数状态
@@ -109,37 +95,38 @@ export default function VideoGenerationPage() {
   const [characterCards, setCharacterCards] = useState<CharacterCard[]>([]);
   const [showCharacterLibrary, setShowCharacterLibrary] = useState(false);
   const [librarySearchQuery, setLibrarySearchQuery] = useState('');
-  const [displayLimit, setDisplayLimit] = useState(20); // 初始显示20个
+  const [displayLimit, setDisplayLimit] = useState(20);
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
   const remixPromptRef = useRef<HTMLTextAreaElement>(null);
 
-  // 过滤后的可用模型
-  const availableModels = filterVideoModelsByChannel(VIDEO_MODELS, channelEnabled, disabledModels);
-
   // 获取当前选中的模型配置
-  const currentModel = getVideoModelById(selectedModelId) || availableModels[0];
+  const currentModel = useMemo(() => {
+    return availableModels.find(m => m.id === selectedModelId) || availableModels[0];
+  }, [availableModels, selectedModelId]);
 
-  // 加载渠道配置和禁用模型
+  // 加载模型列表
   useEffect(() => {
-    const loadChannels = async () => {
+    const loadModels = async () => {
       try {
-        const [channelRes, disabledRes] = await Promise.all([
-          fetch('/api/channels'),
-          fetch('/api/disabled-models'),
-        ]);
-        if (channelRes.ok) {
-          const data = await channelRes.json();
-          setChannelEnabled(data.data);
-        }
-        if (disabledRes.ok) {
-          const data = await disabledRes.json();
-          setDisabledModels(data.data?.videoModels || []);
+        const res = await fetch('/api/video-models');
+        if (res.ok) {
+          const data = await res.json();
+          const models = data.data?.models || [];
+          setAvailableModels(models);
+          // 设置默认选中第一个模型
+          if (models.length > 0 && !selectedModelId) {
+            setSelectedModelId(models[0].id);
+            setAspectRatio(models[0].defaultAspectRatio);
+            setDuration(models[0].defaultDuration);
+          }
         }
       } catch (err) {
-        console.error('Failed to load channels:', err);
+        console.error('Failed to load models:', err);
+      } finally {
+        setModelsLoaded(true);
       }
     };
-    loadChannels();
+    loadModels();
   }, []);
 
   // 加载每日使用量
@@ -159,21 +146,20 @@ export default function VideoGenerationPage() {
     loadDailyUsage();
   }, []);
 
-
   // 当模型改变时，重置参数到默认值
   useEffect(() => {
-    const model = getVideoModelById(selectedModelId);
+    const model = availableModels.find(m => m.id === selectedModelId);
     if (model) {
       setAspectRatio(model.defaultAspectRatio);
       setDuration(model.defaultDuration);
-      if (!model.features.supportReferenceFile) {
+      if (!model.features.imageToVideo) {
         setFiles((prev) => {
           prev.forEach((f) => URL.revokeObjectURL(f.preview));
           return [];
         });
       }
     }
-  }, [selectedModelId]);
+  }, [selectedModelId, availableModels]);
 
   // 加载用户角色卡
   useEffect(() => {
@@ -437,6 +423,7 @@ export default function VideoGenerationPage() {
 
   // 验证输入
   const validateInput = (): string | null => {
+    if (!currentModel) return '请选择模型';
     // 检查每日限制
     if (isVideoLimitReached) {
       return `今日视频生成次数已达上限 (${dailyLimits.videoLimit} 次)`;
@@ -455,6 +442,11 @@ export default function VideoGenerationPage() {
         if (!prompt.trim() && files.length === 0) return '请输入提示词或上传参考素材';
     }
     return null;
+  };
+
+  // 构建模型 ID（用于 Sora 类型）
+  const buildModelId = (ratio: string, dur: string): string => {
+    return `sora-video-${ratio}-${dur}`;
   };
 
   // 单次提交任务的核心函数
@@ -507,7 +499,7 @@ export default function VideoGenerationPage() {
     setSubmitting(true);
 
     const taskPrompt = buildPrompt();
-    const taskModel = buildSoraModelId(aspectRatio, duration);
+    const taskModel = buildModelId(aspectRatio, duration);
     const taskFiles = buildFiles();
 
     const remixTargetId = extractRemixTargetId();
@@ -559,7 +551,7 @@ export default function VideoGenerationPage() {
     setSubmitting(true);
 
     const taskPrompt = buildPrompt();
-    const taskModel = buildSoraModelId(aspectRatio, duration);
+    const taskModel = buildModelId(aspectRatio, duration);
     const taskFiles = buildFiles();
     const remixTargetId = extractRemixTargetId();
     const styleId = creationMode === 'normal' ? selectedStyle || undefined : undefined;
@@ -622,11 +614,11 @@ export default function VideoGenerationPage() {
         )}
       </div>
 
-      {/* Sora 渠道禁用提示 */}
-      {!channelEnabled.sora && (
+      {/* 无可用模型提示 */}
+      {modelsLoaded && availableModels.length === 0 && (
         <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0" />
-          <p className="text-sm text-yellow-200">Sora 视频生成功能已被管理员禁用</p>
+          <p className="text-sm text-yellow-200">视频生成功能已被管理员禁用</p>
         </div>
       )}
 
@@ -642,7 +634,7 @@ export default function VideoGenerationPage() {
         <div className="lg:col-span-1">
           <div className={cn(
             "bg-white/5 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-sm",
-            (!channelEnabled.sora || isVideoLimitReached) && "opacity-50 pointer-events-none"
+            (availableModels.length === 0 || isVideoLimitReached) && "opacity-50 pointer-events-none"
           )}>
             {/* Header */}
             <div className="px-5 py-4 border-b border-white/10 bg-gradient-to-r from-purple-500/5 to-blue-500/5">
@@ -690,14 +682,14 @@ export default function VideoGenerationPage() {
                     className="w-full flex items-center justify-between px-3 py-2.5 bg-white/5 border border-white/10 text-white rounded-lg focus:outline-none focus:border-white/30"
                   >
                     <div className="flex flex-col items-start">
-                      <span className="text-sm font-medium">{currentModel.name}</span>
-                      <span className="text-xs text-white/50">{currentModel.description}</span>
+                      <span className="text-sm font-medium">{currentModel?.name || '选择模型'}</span>
+                      <span className="text-xs text-white/50">{currentModel?.description || ''}</span>
                     </div>
                     <ChevronDown className={`w-4 h-4 transition-transform ${showModelDropdown ? 'rotate-180' : ''}`} />
                   </button>
                   {showModelDropdown && (
                     <div className="absolute z-10 w-full mt-1 bg-zinc-900 border border-white/10 rounded-lg shadow-lg overflow-hidden">
-                      {VIDEO_MODELS.map((model) => (
+                      {availableModels.map((model) => (
                         <button
                           key={model.id}
                           type="button"
@@ -719,6 +711,7 @@ export default function VideoGenerationPage() {
               </div>
 
               {/* Aspect Ratio */}
+              {currentModel && (
               <div className="space-y-2">
                 <label className="text-xs text-white/50 uppercase tracking-wider">画面比例</label>
                 <div className="grid grid-cols-3 gap-2">
@@ -733,14 +726,16 @@ export default function VideoGenerationPage() {
                           : 'bg-white/5 text-white/70 border-white/10 hover:bg-white/10 hover:text-white'
                       )}
                     >
-                      <span className="text-base">{r.icon}</span>
+                      <span className="text-base">{r.value === 'landscape' ? '▬' : '▮'}</span>
                       <span className="text-xs font-medium">{r.label}</span>
                     </button>
                   ))}
                 </div>
               </div>
+              )}
 
               {/* Duration */}
+              {currentModel && (
               <div className="space-y-2">
                 <label className="text-xs text-white/50 uppercase tracking-wider">视频时长</label>
                 <div className="grid grid-cols-3 gap-2">
@@ -760,6 +755,7 @@ export default function VideoGenerationPage() {
                   ))}
                 </div>
               </div>
+              )}
 
               {/* Mode-specific inputs */}
               {creationMode === 'normal' && (
@@ -813,7 +809,7 @@ export default function VideoGenerationPage() {
                     <p className="text-[10px] text-white/30">可选：选择一个风格应用到生成的视频</p>
                   </div>
 
-                  {currentModel.features.supportReferenceFile && (
+                  {currentModel?.features.imageToVideo && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <label className="text-xs text-white/50 uppercase tracking-wider">参考素材</label>

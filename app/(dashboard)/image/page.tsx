@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import {
   Upload,
@@ -14,16 +14,9 @@ import {
   Info,
 } from 'lucide-react';
 import { cn, fileToBase64 } from '@/lib/utils';
-import type { Generation } from '@/types';
+import type { Generation, SafeImageModel, DailyLimitConfig } from '@/types';
 import { toast } from '@/components/ui/toaster';
 import { ResultGallery, type Task } from '@/components/generator/result-gallery';
-import {
-  IMAGE_MODELS,
-  getImageModelById,
-  getImageResolution,
-  filterImageModelsByChannel,
-} from '@/lib/model-config';
-import type { ChannelEnabledConfig, DailyLimitConfig, ModelDisabledConfig } from '@/types';
 
 // 每日使用量类型
 interface DailyUsage {
@@ -32,29 +25,33 @@ interface DailyUsage {
   characterCardCount: number;
 }
 
+// 获取图像分辨率
+function getImageResolution(
+  model: SafeImageModel,
+  aspectRatio: string,
+  imageSize?: string
+): string {
+  if (model.features.imageSize && imageSize && typeof model.resolutions[imageSize] === 'object') {
+    return (model.resolutions[imageSize] as Record<string, string>)[aspectRatio] || '';
+  }
+  return (model.resolutions as Record<string, string>)[aspectRatio] || '';
+}
+
 export default function ImageGenerationPage() {
   const { update } = useSession();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
 
-  // 渠道启用状态
-  const [channelEnabled, setChannelEnabled] = useState<ChannelEnabledConfig>({
-    sora: true,
-    gemini: true,
-    zimage: true,
-    gitee: true,
-  });
-  const [channelLoaded, setChannelLoaded] = useState(false);
-
-  // 禁用的模型
-  const [disabledModels, setDisabledModels] = useState<string[]>([]);
+  // 模型列表（从 API 获取）
+  const [availableModels, setAvailableModels] = useState<SafeImageModel[]>([]);
+  const [modelsLoaded, setModelsLoaded] = useState(false);
 
   // 每日限制
   const [dailyUsage, setDailyUsage] = useState<DailyUsage>({ imageCount: 0, videoCount: 0, characterCardCount: 0 });
   const [dailyLimits, setDailyLimits] = useState<DailyLimitConfig>({ imageLimit: 0, videoLimit: 0, characterCardLimit: 0 });
 
   // 模型选择
-  const [selectedModelId, setSelectedModelId] = useState<string>('gemini-nano');
+  const [selectedModelId, setSelectedModelId] = useState<string>('');
   const [showModelDropdown, setShowModelDropdown] = useState(false);
 
   // 参数状态
@@ -69,35 +66,36 @@ export default function ImageGenerationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // 过滤后的可用模型
-  const availableModels = filterImageModelsByChannel(IMAGE_MODELS, channelEnabled, disabledModels);
-
   // 获取当前选中的模型配置
-  const currentModel = getImageModelById(selectedModelId) || availableModels[0];
+  const currentModel = useMemo(() => {
+    return availableModels.find(m => m.id === selectedModelId) || availableModels[0];
+  }, [availableModels, selectedModelId]);
 
-  // 加载渠道配置和禁用模型
+  // 加载模型列表
   useEffect(() => {
-    const loadChannels = async () => {
+    const loadModels = async () => {
       try {
-        const [channelRes, disabledRes] = await Promise.all([
-          fetch('/api/channels'),
-          fetch('/api/disabled-models'),
-        ]);
-        if (channelRes.ok) {
-          const data = await channelRes.json();
-          setChannelEnabled(data.data);
-        }
-        if (disabledRes.ok) {
-          const data = await disabledRes.json();
-          setDisabledModels(data.data?.imageModels || []);
+        const res = await fetch('/api/image-models');
+        if (res.ok) {
+          const data = await res.json();
+          const models = data.data?.models || [];
+          setAvailableModels(models);
+          // 设置默认选中第一个模型
+          if (models.length > 0 && !selectedModelId) {
+            setSelectedModelId(models[0].id);
+            setAspectRatio(models[0].defaultAspectRatio);
+            if (models[0].defaultImageSize) {
+              setImageSize(models[0].defaultImageSize);
+            }
+          }
         }
       } catch (err) {
-        console.error('Failed to load channels:', err);
+        console.error('Failed to load models:', err);
       } finally {
-        setChannelLoaded(true);
+        setModelsLoaded(true);
       }
     };
-    loadChannels();
+    loadModels();
   }, []);
 
   // 加载每日使用量
@@ -117,33 +115,23 @@ export default function ImageGenerationPage() {
     loadDailyUsage();
   }, []);
 
-  // 当渠道配置加载完成后，检查当前选中的模型是否可用
-  useEffect(() => {
-    if (channelLoaded && availableModels.length > 0) {
-      const isCurrentModelAvailable = availableModels.some(m => m.id === selectedModelId);
-      if (!isCurrentModelAvailable) {
-        setSelectedModelId(availableModels[0].id);
-      }
-    }
-  }, [channelLoaded, availableModels, selectedModelId]);
-
   // 当模型改变时，重置参数到默认值
   useEffect(() => {
-    const model = getImageModelById(selectedModelId);
+    const model = availableModels.find(m => m.id === selectedModelId);
     if (model) {
       setAspectRatio(model.defaultAspectRatio);
       if (model.defaultImageSize) {
         setImageSize(model.defaultImageSize);
       }
       // 如果新模型不支持参考图，清除已上传的图片
-      if (!model.features.supportReferenceImage) {
+      if (!model.features.imageToImage) {
         setImages((prev) => {
           prev.forEach((img) => URL.revokeObjectURL(img.preview));
           return [];
         });
       }
     }
-  }, [selectedModelId]);
+  }, [selectedModelId, availableModels]);
 
   // 加载 pending 任务
   useEffect(() => {
@@ -337,6 +325,7 @@ export default function ImageGenerationPage() {
 
   // 验证输入
   const validateInput = (): string | null => {
+    if (!currentModel) return '请选择模型';
     // 检查每日限制
     if (isImageLimitReached) {
       return `今日图像生成次数已达上限 (${dailyLimits.imageLimit} 次)`;
@@ -344,7 +333,8 @@ export default function ImageGenerationPage() {
     if (currentModel.requiresReferenceImage && images.length === 0) {
       return '请上传参考图';
     }
-    if (currentModel.provider === 'gemini') {
+    // Gemini 类型允许图片或提示词
+    if (currentModel.channelType === 'gemini') {
       if (!prompt.trim() && images.length === 0) {
         return '请输入提示词或上传参考图片';
       }
@@ -358,56 +348,19 @@ export default function ImageGenerationPage() {
 
   // 单次提交任务的核心函数
   const submitSingleTask = async (taskPrompt: string) => {
-    let res: Response;
-    let taskType: string;
-
-    if (currentModel.provider === 'sora') {
-      const size = getImageResolution(currentModel, aspectRatio);
-      res = await fetch('/api/generate/sora-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: taskPrompt,
-          model: currentModel.apiModel,
-          size,
-          input_image: images.length > 0 ? images[0].data : undefined,
-        }),
-      });
-      taskType = 'sora-image';
-    } else if (currentModel.provider === 'gemini') {
-      res = await fetch('/api/generate/gemini', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: currentModel.apiModel,
-          prompt: taskPrompt,
-          aspectRatio,
-          imageSize: currentModel.features.supportImageSize ? imageSize : undefined,
-          images: images.map((img) => ({ mimeType: img.mimeType, data: img.data })),
-        }),
-      });
-      taskType = 'gemini-image';
-    } else {
-      const size = getImageResolution(currentModel, aspectRatio);
-      const payload: Record<string, unknown> = {
+    if (!currentModel) throw new Error('请选择模型');
+    
+    const res = await fetch('/api/generate/image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        modelId: currentModel.id,
         prompt: taskPrompt,
-        model: currentModel.apiModel,
-        channel: currentModel.channel,
-        ...(currentModel.channel === 'gitee' && { numInferenceSteps: 9 }),
-      };
-      if (size) {
-        payload.size = size;
-      }
-      if (currentModel.features.supportReferenceImage && images.length > 0) {
-        payload.images = images.map((img) => ({ mimeType: img.mimeType, data: img.data }));
-      }
-      res = await fetch('/api/generate/zimage', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      taskType = currentModel.channel === 'gitee' ? 'gitee-image' : 'zimage-image';
-    }
+        aspectRatio,
+        imageSize: currentModel.features.imageSize ? imageSize : undefined,
+        images: images.map((img) => ({ mimeType: img.mimeType, data: img.data })),
+      }),
+    });
 
     const data = await res.json();
 
@@ -418,7 +371,7 @@ export default function ImageGenerationPage() {
     const newTask: Task = {
       id: data.data.id,
       prompt: taskPrompt,
-      type: taskType,
+      type: data.data.type || 'image',
       status: 'pending',
       createdAt: Date.now(),
     };
@@ -497,6 +450,7 @@ export default function ImageGenerationPage() {
 
   // 获取当前分辨率显示
   const getCurrentResolutionDisplay = () => {
+    if (!currentModel) return '';
     return getImageResolution(currentModel, aspectRatio, imageSize);
   };
 
@@ -522,7 +476,7 @@ export default function ImageGenerationPage() {
       </div>
 
       {/* 无可用模型提示 */}
-      {channelLoaded && availableModels.length === 0 && (
+      {modelsLoaded && availableModels.length === 0 && (
         <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0" />
           <p className="text-sm text-yellow-200">所有图像生成渠道已被管理员禁用</p>
@@ -566,14 +520,14 @@ export default function ImageGenerationPage() {
                   >
                     <div className="flex flex-col items-start">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{currentModel.name}</span>
-                        {currentModel.highlight && (
+                        <span className="text-sm font-medium">{currentModel?.name || '选择模型'}</span>
+                        {currentModel?.highlight && (
                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-400/30">
                             HD
                           </span>
                         )}
                       </div>
-                      <span className="text-xs text-white/50">{currentModel.description}</span>
+                      <span className="text-xs text-white/50">{currentModel?.description || ''}</span>
                     </div>
                     <ChevronDown className={`w-4 h-4 transition-transform ${showModelDropdown ? 'rotate-180' : ''}`} />
                   </button>
@@ -603,7 +557,7 @@ export default function ImageGenerationPage() {
                           </div>
                           <span className="text-xs text-white/50">
                             {model.description}
-                            {!model.features.supportReferenceImage && ' · 不支持参考图'}
+                            {!model.features.imageToImage && ' · 不支持参考图'}
                           </span>
                         </button>
                       ))}
@@ -618,7 +572,7 @@ export default function ImageGenerationPage() {
               </div>
 
               {/* Image Size (if supported) */}
-              {currentModel.features.supportImageSize && currentModel.imageSizes && (
+              {currentModel?.features.imageSize && currentModel.imageSizes && (
                 <div className="space-y-2">
                   <label className="text-xs text-white/50 uppercase tracking-wider">分辨率</label>
                   <div className="grid grid-cols-3 gap-2">
@@ -641,6 +595,7 @@ export default function ImageGenerationPage() {
               )}
 
               {/* Aspect Ratio */}
+              {currentModel && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-xs text-white/50 uppercase tracking-wider">画面比例</label>
@@ -663,9 +618,10 @@ export default function ImageGenerationPage() {
                   ))}
                 </div>
               </div>
+              )}
 
               {/* Reference Images (if supported) */}
-              {currentModel.features.supportReferenceImage && (
+              {currentModel?.features.imageToImage && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-xs text-white/50 uppercase tracking-wider">参考图</label>
