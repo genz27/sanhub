@@ -1936,7 +1936,7 @@ CREATE TABLE IF NOT EXISTS image_channels (
   name VARCHAR(100) NOT NULL,
   type VARCHAR(50) NOT NULL,
   base_url VARCHAR(500) DEFAULT '',
-  api_key TEXT DEFAULT '',
+  api_key TEXT,
   enabled TINYINT(1) DEFAULT 1,
   created_at BIGINT NOT NULL,
   updated_at BIGINT NOT NULL,
@@ -1951,7 +1951,7 @@ CREATE TABLE IF NOT EXISTS image_models (
   description VARCHAR(500) DEFAULT '',
   api_model VARCHAR(200) NOT NULL,
   base_url VARCHAR(500) DEFAULT '',
-  api_key TEXT DEFAULT '',
+  api_key TEXT,
   features TEXT NOT NULL,
   aspect_ratios TEXT NOT NULL,
   resolutions TEXT NOT NULL,
@@ -1979,8 +1979,11 @@ async function initializeImageChannelsTablesInternal(db: DatabaseAdapter): Promi
     if (statement.trim()) {
       try {
         await db.execute(statement);
-      } catch (e) {
-        // 表可能已存在，忽略错误
+      } catch (e: any) {
+        // 仅忽略"表已存在"错误，其他错误需要打印
+        if (e?.code !== 'ER_TABLE_EXISTS_ERROR' && e?.errno !== 1050) {
+          console.error('[DB] Failed to create image channels table:', e?.message || e);
+        }
       }
     }
   }
@@ -2444,7 +2447,7 @@ CREATE TABLE IF NOT EXISTS video_channels (
   name VARCHAR(100) NOT NULL,
   type VARCHAR(50) NOT NULL,
   base_url VARCHAR(500) DEFAULT '',
-  api_key TEXT DEFAULT '',
+  api_key TEXT,
   enabled TINYINT(1) DEFAULT 1,
   created_at BIGINT NOT NULL,
   updated_at BIGINT NOT NULL,
@@ -2458,7 +2461,7 @@ CREATE TABLE IF NOT EXISTS video_models (
   description VARCHAR(500) DEFAULT '',
   api_model VARCHAR(200) NOT NULL,
   base_url VARCHAR(500) DEFAULT '',
-  api_key TEXT DEFAULT '',
+  api_key TEXT,
   features TEXT NOT NULL,
   aspect_ratios TEXT NOT NULL,
   durations TEXT NOT NULL,
@@ -2481,8 +2484,11 @@ async function initializeVideoChannelsTablesInternal(db: DatabaseAdapter): Promi
     if (statement.trim()) {
       try {
         await db.execute(statement);
-      } catch (e) {
-        // 表可能已存在
+      } catch (e: any) {
+        // 仅忽略"表已存在"错误，其他错误需要打印
+        if (e?.code !== 'ER_TABLE_EXISTS_ERROR' && e?.errno !== 1050) {
+          console.error('[DB] Failed to create video channels table:', e?.message || e);
+        }
       }
     }
   }
