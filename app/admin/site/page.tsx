@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Globe, Loader2, Save } from 'lucide-react';
+import { Globe, Loader2, Save, Upload } from 'lucide-react';
 import { toast } from '@/components/ui/toaster';
 import type { SystemConfig } from '@/types';
 
@@ -38,6 +38,8 @@ export default function SiteConfigPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           siteConfig: config.siteConfig,
+          picuiApiKey: config.picuiApiKey,
+          picuiBaseUrl: config.picuiBaseUrl,
         }),
       });
 
@@ -46,7 +48,7 @@ export default function SiteConfigPage() {
         throw new Error(data.error);
       }
 
-      toast({ title: '网站配置已保存' });
+      toast({ title: '配置已保存' });
     } catch (err) {
       toast({ title: '保存失败', description: err instanceof Error ? err.message : '未知错误', variant: 'destructive' });
     } finally {
@@ -188,6 +190,49 @@ export default function SiteConfigPage() {
               placeholder="Powered by OpenAI Sora & Google Gemini"
               className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
             />
+          </div>
+        </div>
+      </div>
+
+      {/* 图床配置 */}
+      <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+        <div className="p-4 border-b border-white/10 flex items-center gap-3">
+          <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center">
+            <Upload className="w-4 h-4 text-green-400" />
+          </div>
+          <div>
+            <h2 className="font-medium text-white">图床配置</h2>
+            <p className="text-xs text-white/40">用于上传和存储生成的图片</p>
+          </div>
+        </div>
+
+        <div className="p-4 space-y-4">
+          {/* PicUI Base URL */}
+          <div className="space-y-2">
+            <label className="text-sm text-white/50">PicUI 接口地址</label>
+            <input
+              type="text"
+              value={config.picuiBaseUrl}
+              onChange={(e) => setConfig({ ...config, picuiBaseUrl: e.target.value })}
+              placeholder="https://picui.cn/api/v1"
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
+            />
+            <p className="text-xs text-white/30">默认为 https://picui.cn/api/v1</p>
+          </div>
+
+          {/* PicUI API Key */}
+          <div className="space-y-2">
+            <label className="text-sm text-white/50">PicUI API Key</label>
+            <input
+              type="password"
+              value={config.picuiApiKey}
+              onChange={(e) => setConfig({ ...config, picuiApiKey: e.target.value })}
+              placeholder="输入 PicUI API Key"
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-white/30"
+            />
+            <p className="text-xs text-white/30">
+              从 <a href="https://picui.cn" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">picui.cn</a> 获取 API Key
+            </p>
           </div>
         </div>
       </div>
